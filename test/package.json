@@ -1,0 +1,8 @@
+{
+  "name": "garage-pwa-test",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

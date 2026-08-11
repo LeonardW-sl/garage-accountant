@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>真机探针 · 汽修记账助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#12121c;color:#eee;font-size:16px;line-height:1.6;padding:12px 12px 200px}
+h1{font-size:20px;margin-bottom:4px}
+h1 small{display:block;font-size:13px;color:#889;font-weight:400}
+section{background:#1c1c2b;border-radius:12px;padding:14px;margin-top:12px;border-left:4px solid #444}
+section.pass{border-left-color:#3fa34d}
+section.fail{border-left-color:#c0392b}
+section.warn{border-left-color:#d18b16}
+h2{font-size:17px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{font-size:13px;padding:2px 10px;border-radius:20px;background:#333;flex-shrink:0}
+.pass .badge{background:#3fa34d}
+.fail .badge{background:#c0392b}
+.warn .badge{background:#d18b16;color:#000}
+.hint{font-size:13px;color:#99a;margin-bottom:10px}
+button{width:100%;padding:15px;margin-top:8px;border:none;border-radius:10px;background:#2d5be3;color:#fff;font-size:17px;font-weight:600}
+button:active{opacity:.7}
+button.sec{background:#39394d}
+button.warn{background:#d18b16;color:#000}
+pre{background:#0c0c14;border-radius:8px;padding:10px;margin-top:8px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;max-height:230px;overflow-y:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
+input[type=text],input[type=tel],textarea{width:100%;padding:16px;border-radius:10px;border:3px solid #2d5be3;background:#0c0c14;color:#fff;font-size:22px;margin-top:8px}
+label{font-size:13px;color:#99a;display:block;margin-top:10px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:3px 0;border-bottom:1px solid #2a2a3a}
+.kv b{color:#7fd1a0;font-weight:600;text-align:right;word-break:break-all}
+.sizebox{background:#0c0c14;border-radius:8px;padding:8px;margin-top:6px;display:flex;align-items:baseline;gap:10px}
+.sizebox span{font-size:12px;color:#889;flex-shrink:0;width:52px}
+.sizebox b{color:#ffb300;font-weight:800}
+#stickyBar{position:fixed;left:0;right:0;bottom:0;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:16px;font-weight:700;z-index:99}
+img.shot{max-width:100%;border-radius:8px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<h1>真机探针<small>vivo X30 / OriginOS · 逐项测完，最后点底部「复制全部结果」发我</small></h1>
+
+<section id="s0">
+  <h2>0 · 设备信息<span class="badge">自动</span></h2>
+  <div id="devInfo"></div>
+</section>
+
+<section id="s1">
+  <h2>1 · 浏览器能力<span class="badge" id="b1">检测中</span></h2>
+  <div class="hint">确认哪些 API 真的存在（存在不代表能用，后面几项才是真测）</div>
+  <div id="capInfo"></div>
+</section>
+
+<section id="s2">
+  <h2>2 · 输入法上屏捕获<span class="badge" id="b2">待测</span></h2>
+  <div class="hint">
+    <b>最关键的一项。</b>点下面的框 → 用豆包键盘的话筒说一句话 → 看事件有没有被抓到。<br>
+    请照着念：<b style="color:#ffb300">皖A12345 排气歧管垫片 六十 运费十二 收一百二</b>
+  </div>
+  <button onclick="focusIme()">① 点这里聚焦输入框（看键盘弹不弹）</button>
+  <input type="text" id="imeInput" placeholder="在这里用话筒说话">
+  <button class="sec" onclick="readValue()">② 说完点这里：JS 能读到什么</button>
+  <button class="sec" onclick="clearIme()">清空重测</button>
+  <pre id="imeLog">（等待输入…）</pre>
+</section>
+
+<section id="s3">
+  <h2>3 · 键盘遮挡 / 视口<span class="badge" id="b3">待测</span></h2>
+  <div class="hint">键盘弹出时，底部红条如果被盖住 → 「说完了」按钮不能放页面底部。上面第 2 项聚焦时观察这里的数字变化。</div>
+  <div id="vpInfo"></div>
+</section>
+
+<section id="s4">
+  <h2>4 · 朗读播报 TTS<span class="badge" id="b4">待测</span></h2>
+  <div class="hint">爸爸靠耳朵认字，这一项挂了产品就废一半。<b>请把手机音量调到店里能听清的档位再测。</b></div>
+  <button onclick="ttsTest(1)">① 念一句短的</button>
+  <button onclick="ttsTest(2)">② 念一整单（连续多句，测会不会被截断）</button>
+  <button onclick="ttsTest(3)">③ 念到一半打断，再念新的</button>
+  <button class="sec" onclick="ttsAfterKb()">④ 先弹键盘再念（测输入法抢音频）</button>
+  <label>听完请如实回答，按最差的情况选：</label>
+  <button class="sec" onclick="mark('tts','ok')">✅ 声音清楚、音量够大、没断</button>
+  <button class="warn" onclick="mark('tts','weak')">⚠️ 能听见但太小声 / 有卡顿</button>
+  <button class="warn" style="background:#c0392b;color:#fff" onclick="mark('tts','bad')">❌ 完全没声音 / 读音怪得听不懂</button>
+  <pre id="ttsLog">（未测试）</pre>
+</section>
+
+<section id="s5">
+  <h2>5 · 拍照 + 压缩<span class="badge" id="b5">待测</span></h2>
+  <div class="hint">拍车牌 / 拍配件单的地基。顺便测压到 100KB 以内还看不看得清。</div>
+  <button onclick="document.getElementById('camIn').click()">📷 调起相机拍一张（拍个车牌或单子）</button>
+  <input type="file" id="camIn" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(this)">
+  <pre id="camLog">（未测试）</pre>
+  <div id="camShot"></div>
+</section>
+
+<section id="s6">
+  <h2>6 · 本地存储<span class="badge" id="b6">待测</span></h2>
+  <div class="hint">账目存哪。要确认 IndexedDB 能写、能存图片、并且能申请到「不被系统清掉」。</div>
+  <button onclick="idbTest()">测 IndexedDB 读写 + 持久化授权</button>
+  <pre id="idbLog">（未测试）</pre>
+</section>
+
+<section id="s7">
+  <h2>7 · 数字看得清吗<span class="badge" id="b7">待测</span></h2>
+  <div class="hint"><b>这一项要给爸爸看。</b>把手机递过去，问他每一行的数字念多少。记下他从哪一行开始看不清 / 要眯眼。</div>
+  <div class="sizebox"><span>72px</span><b style="font-size:72px">120</b></div>
+  <div class="sizebox"><span>56px</span><b style="font-size:56px">120</b></div>
+  <div class="sizebox"><span>44px</span><b style="font-size:44px">120</b></div>
+  <div class="sizebox"><span>34px</span><b style="font-size:34px">120</b></div>
+  <div class="sizebox"><span>26px</span><b style="font-size:26px">120</b></div>
+  <div class="sizebox"><span>20px</span><b style="font-size:20px">120</b></div>
+  <label>他能轻松看清的最小一行是：</label>
+  <button class="sec" onclick="mark('read','72')">72px 才行</button>
+  <button class="sec" onclick="mark('read','56')">56px</button>
+  <button class="sec" onclick="mark('read','44')">44px</button>
+  <button class="sec" onclick="mark('read','34')">34px</button>
+  <button class="sec" onclick="mark('read','26')">26px 以下都行</button>
+  <pre id="readLog">（未测试）</pre>
+</section>
+
+<section id="s8">
+  <h2>8 · 导出结果<span class="badge">最后一步</span></h2>
+  <button onclick="copyAll()">📋 复制全部结果</button>
+  <button class="sec" onclick="showAll()">看一眼要复制的内容</button>
+  <pre id="allLog" style="display:none"></pre>
+</section>
+
+<div id="stickyBar">底部固定条 · 键盘弹出时看它会不会被盖住</div>
+
+<script>
+var R = { marks:{}, events:[], device:{}, caps:{} };
+
+/* ---------- 0 设备 ---------- */
+(function(){
+  var d = R.device = {
+    ua: navigator.userAgent,
+    screen: screen.width + '×' + screen.height,
+    window: innerWidth + '×' + innerHeight,
+    dpr: devicePixelRatio,
+    cssPx: Math.round(innerWidth) + '×' + Math.round(innerHeight),
+    lang: navigator.language,
+    standalone: !!(matchMedia('(display-mode: standalone)').matches),
+    memory: navigator.deviceMemory || '未知',
+    online: navigator.onLine
+  };
+  var h = '';
+  for (var k in d) h += '<div class="kv"><span>' + k + '</span><b>' + d[k] + '</b></div>';
+  document.getElementById('devInfo').innerHTML = h;
+})();
+
+/* ---------- 1 能力 ---------- */
+(function(){
+  var c = R.caps = {
+    'SpeechRecognition(语音识别)': !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    'speechSynthesis(朗读)': !!window.speechSynthesis,
+    'BarcodeDetector(扫码)': 'BarcodeDetector' in window,
+    'IndexedDB': !!window.indexedDB,
+    'storage.persist(防清理)': !!(navigator.storage && navigator.storage.persist),
+    'visualViewport(键盘检测)': !!window.visualViewport,
+    'getUserMedia(摄像头流)': !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    'serviceWorker(离线)': 'serviceWorker' in navigator,
+    'clipboard(复制)': !!(navigator.clipboard && navigator.clipboard.writeText),
+    'secureContext(HTTPS)': window.isSecureContext
+  };
+  var h = '', bad = 0;
+  for (var k in c) {
+    if (!c[k]) bad++;
+    h += '<div class="kv"><span>' + k + '</span><b style="color:' + (c[k] ? '#7fd1a0' : '#e07b7b') + '">' + (c[k] ? '有' : '没有') + '</b></div>';
+  }
+  document.getElementById('capInfo').innerHTML = h;
+  setStatus('s1','b1', bad === 0 ? 'pass' : 'warn', bad === 0 ? '全有' : bad + ' 项缺失');
+})();
+
+/* ---------- 2 输入法 ---------- */
+var imeEl = document.getElementById('imeInput');
+var evNames = ['focus','beforeinput','compositionstart','compositionupdate','compositionend','input','change','keydown','keyup','blur'];
+evNames.forEach(function(n){
+  imeEl.addEventListener(n, function(e){
+    logEv(n, e);
+  });
+});
+function logEv(n, e){
+  var d = { ev:n, t: Math.round(performance.now()), value: imeEl.value };
+  if (e.inputType) d.inputType = e.inputType;
+  if (e.data != null) d.data = e.data;
+  if (e.isComposing != null) d.isComposing = e.isComposing;
+  if (e.key) d.key = e.key;
+  if (n === 'keydown' || n === 'keyup') { if (d.key === 'Process' || e.keyCode === 229) d.note = 'IME键(229)'; }
+  R.events.push(d);
+  renderIme();
+}
+function renderIme(){
+  var last = R.events.slice(-40);
+  var txt = last.map(function(d){
+    var s = '[' + d.ev + ']';
+    if (d.inputType) s += ' type=' + d.inputType;
+    if (d.data != null) s += ' data="' + d.data + '"';
+    if (d.key) s += ' key=' + d.key;
+    if (d.note) s += ' ' + d.note;
+    s += '\n    value="' + d.value + '"';
+    return s;
+  }).join('\n');
+  document.getElementById('imeLog').textContent = txt || '（等待输入…）';
+  var hasInput = R.events.some(function(d){ return d.ev === 'input'; });
+  var hasVal = imeEl.value.length > 0;
+  if (hasVal && hasInput) setStatus('s2','b2','pass','抓到了');
+  else if (hasVal && !hasInput) setStatus('s2','b2','fail','有字但没事件!');
+  else if (R.events.length) setStatus('s2','b2','warn','进行中');
+}
+function focusIme(){ imeEl.focus(); imeEl.click(); }
+function readValue(){
+  R.marks.imeFinalValue = imeEl.value;
+  R.marks.imeFinalLen = imeEl.value.length;
+  var v = imeEl.value;
+  var an = { 有阿拉伯数字: /[0-9]/.test(v), 有中文数字: /[一二三四五六七八九十百千零两]/.test(v),
+             有标点: /[，。、,.]/.test(v), 有空格: /\s/.test(v) };
+  R.marks.imeAnalysis = an;
+  var s = 'JS 读到的完整内容:\n"' + v + '"\n\n长度: ' + v.length + ' 字符\n\n特征分析:\n';
+  for (var k in an) s += '  ' + k + ': ' + (an[k] ? '是' : '否') + '\n';
+  s += '\n共捕获 ' + R.events.length + ' 个事件\n';
+  s += '含 input 事件: ' + (R.events.some(function(d){return d.ev==='input';}) ? '是' : '否 ← 严重问题') + '\n';
+  s += '含 compositionend: ' + (R.events.some(function(d){return d.ev==='compositionend';}) ? '是' : '否');
+  document.getElementById('imeLog').textContent = s;
+  if (v.length && R.events.some(function(d){return d.ev==='input';})) setStatus('s2','b2','pass','抓到了');
+  else if (v.length) setStatus('s2','b2','fail','有字但没事件!');
+  else setStatus('s2','b2','fail','没读到内容');
+}
+function clearIme(){ imeEl.value=''; R.events=[]; document.getElementById('imeLog').textContent='（等待输入…）'; setStatus('s2','b2','','待测'); }
+
+/* ---------- 3 视口 ---------- */
+function renderVp(){
+  var vv = window.visualViewport;
+  var o = {
+    'window.innerHeight': innerHeight,
+    'visualViewport.height': vv ? Math.round(vv.height) : '不支持',
+    '推算键盘高度': vv ? Math.max(0, Math.round(innerHeight - vv.height)) + ' px' : '测不了',
+    'offsetTop': vv ? Math.round(vv.offsetTop) : '-'
+  };
+  var h = '';
+  for (var k in o) h += '<div class="kv"><span>' + k + '</span><b>' + o[k] + '</b></div>';
+  document.getElementById('vpInfo').innerHTML = h;
+  if (vv) {
+    var kb = Math.round(innerHeight - vv.height);
+    if (kb > 100) { R.marks.keyboardHeight = kb; setStatus('s3','b3','pass','键盘 ' + kb + 'px'); }
+  }
+}
+renderVp();
+if (window.visualViewport) { visualViewport.addEventListener('resize', renderVp); visualViewport.addEventListener('scroll', renderVp); }
+addEventListener('resize', renderVp);
+
+/* ---------- 4 TTS ---------- */
+function voices(){ try { return speechSynthesis.getVoices() || []; } catch(e){ return []; } }
+function listVoices(){
+  var vs = voices().filter(function(v){ return /zh|cmn|CN/i.test(v.lang); });
+  var all = voices();
+  R.marks.ttsVoicesTotal = all.length;
+  R.marks.ttsVoicesZh = vs.map(function(v){ return v.name + '(' + v.lang + ')'; });
+  return '系统语音总数: ' + all.length + '\n中文语音: ' + (vs.length ? vs.map(function(v){return v.name+' ['+v.lang+']';}).join('\n         ') : '一个都没有 ← 严重');
+}
+function say(txt, cb){
+  try {
+    var u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'zh-CN'; u.rate = 0.95; u.volume = 1;
+    var zh = voices().filter(function(v){ return /zh|cmn/i.test(v.lang); })[0];
+    if (zh) u.voice = zh;
+    u.onend = function(){ cb && cb(null); };
+    u.onerror = function(e){ cb && cb(e.error || 'error'); };
+    speechSynthesis.speak(u);
+  } catch(e){ cb && cb(String(e)); }
+}
+function ttsLog(s){ document.getElementById('ttsLog').textContent = s; }
+function ttsTest(n){
+  var head = listVoices() + '\n\n';
+  if (n === 1) {
+    ttsLog(head + '正在念: 「一百二十元」…');
+    speechSynthesis.cancel();
+    say('一百二十元', function(err){ ttsLog(head + (err ? '❌ 出错: ' + err : '✅ 短句念完了')); R.marks.tts1 = err || 'ok'; });
+  }
+  if (n === 2) {
+    var lines = ['皖A12345','第一项，排气歧管垫片，一件，收一百二十元','第二项，机油滤芯，一件，收四十元','一共，一百六十元'];
+    ttsLog(head + '正在连续念 4 句…注意有没有被截断');
+    speechSynthesis.cancel();
+    var i = 0, t0 = Date.now();
+    (function next(err){
+      if (err) { ttsLog(head + '❌ 第' + i + '句出错: ' + err); R.marks.tts2 = 'err:' + err; return; }
+      if (i >= lines.length) { R.marks.tts2 = 'ok ' + (Date.now()-t0) + 'ms'; ttsLog(head + '✅ 4 句念完，用时 ' + (Date.now()-t0) + 'ms'); return; }
+      say(lines[i++], next);
+    })();
+  }
+  if (n === 3) {
+    ttsLog(head + '先念一句长的，1.2 秒后打断念新的…');
+    speechSynthesis.cancel();
+    say('这是一段很长很长的话，用来测试能不能被中途打断，正常情况下你不应该听完这一整句');
+    setTimeout(function(){
+      speechSynthesis.cancel();
+      say('打断成功', function(err){ R.marks.tts3 = err || 'ok'; ttsLog(head + (err ? '❌ ' + err : '✅ 如果你只听到「打断成功」就是对的')); });
+    }, 1200);
+  }
+}
+function ttsAfterKb(){
+  imeEl.focus();
+  setTimeout(function(){
+    say('键盘开着的时候能不能听见这句话', function(err){
+      R.marks.ttsWithKeyboard = err || 'ok';
+      ttsLog('键盘开着时朗读: ' + (err ? '❌ ' + err : '✅ 已发出，你听见了吗') + '\n（听见=没冲突，没听见=输入法抢了音频）');
+    });
+  }, 600);
+}
+if (window.speechSynthesis) { speechSynthesis.onvoiceschanged = function(){ listVoices(); }; setTimeout(listVoices, 300); }
+
+/* ---------- 5 拍照 ---------- */
+function onPhoto(el){
+  var f = el.files && el.files[0];
+  if (!f) { document.getElementById('camLog').textContent = '❌ 没拿到文件（相机可能没打开）'; setStatus('s5','b5','fail','失败'); return; }
+  var log = '原图: ' + f.name + '\n类型: ' + f.type + '\n大小: ' + (f.size/1024).toFixed(0) + ' KB\n';
+  var img = new Image(), url = URL.createObjectURL(f);
+  img.onload = function(){
+    log += '尺寸: ' + img.width + '×' + img.height + '\n\n压缩测试:\n';
+    [1280, 1000, 800].forEach(function(maxW){
+      var sc = Math.min(1, maxW / img.width);
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width*sc); c.height = Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      [0.7, 0.55].forEach(function(q){
+        var d = c.toDataURL('image/jpeg', q);
+        var kb = Math.round(d.length * 0.75 / 1024);
+        log += '  宽' + maxW + ' 质量' + q + ' → ' + kb + ' KB' + (kb <= 100 ? ' ✅' : '') + '\n';
+        if (maxW === 1000 && q === 0.7) document.getElementById('camShot').innerHTML = '<img class="shot" src="' + d + '"><div class="hint">↑ 这是压缩后的效果，车牌 / 单子上的字还认得出吗？</div>';
+      });
+    });
+    R.marks.photo = { size: Math.round(f.size/1024) + 'KB', dim: img.width + 'x' + img.height, type: f.type };
+    document.getElementById('camLog').textContent = log;
+    setStatus('s5','b5','pass','拍到了');
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = function(){ document.getElementById('camLog').textContent = log + '\n❌ 图片解码失败'; setStatus('s5','b5','fail','解码失败'); };
+  img.src = url;
+}
+
+/* ---------- 6 IndexedDB ---------- */
+function idbTest(){
+  var log = '';
+  function out(){ document.getElementById('idbLog').textContent = log; }
+  log += '打开数据库…\n'; out();
+  var req = indexedDB.open('probe_db', 1);
+  req.onupgradeneeded = function(e){ e.target.result.createObjectStore('t', { keyPath:'id' }); };
+  req.onerror = function(){ log += '❌ 打不开: ' + req.error + '\n'; out(); setStatus('s6','b6','fail','失败'); };
+  req.onsuccess = function(){
+    var db = req.result;
+    log += '✅ 打开成功\n'; out();
+    var blob = new Blob([new Uint8Array(120*1024)], { type:'image/jpeg' });
+    var tx = db.transaction('t','readwrite');
+    tx.objectStore('t').put({ id:1, plate:'皖A12345', cost:72, charge:120, photo: blob, ts: Date.now() });
+    tx.oncomplete = function(){
+      log += '✅ 写入成功（含 120KB 图片 blob）\n'; out();
+      var tx2 = db.transaction('t','readonly');
+      var g = tx2.objectStore('t').get(1);
+      g.onsuccess = function(){
+        var v = g.result;
+        log += '✅ 读回成功: 车牌=' + v.plate + ' 收费=' + v.charge + ' 图片=' + (v.photo && v.photo.size ? Math.round(v.photo.size/1024)+'KB' : '丢了❌') + '\n\n'; out();
+        if (navigator.storage && navigator.storage.persist) {
+          navigator.storage.persist().then(function(ok){
+            log += (ok ? '✅ 拿到持久化授权（系统不会自动清掉账目）' : '⚠️ 持久化被拒绝 —— 系统清缓存时账目可能丢失，必须靠云端备份') + '\n';
+            R.marks.persist = ok;
+            out();
+            return navigator.storage.estimate();
+          }).then(function(est){
+            if (est) { log += '可用配额: ' + (est.quota/1048576).toFixed(0) + ' MB，已用 ' + (est.usage/1024).toFixed(0) + ' KB\n'; R.marks.quotaMB = Math.round(est.quota/1048576); }
+            out(); setStatus('s6','b6','pass','通过');
+          }).catch(function(e){ log += '⚠️ ' + e + '\n'; out(); setStatus('s6','b6','warn','部分通过'); });
+        } else { log += '⚠️ 不支持 persist()\n'; out(); setStatus('s6','b6','warn','无持久化'); }
+        R.marks.idb = 'ok';
+      };
+      g.onerror = function(){ log += '❌ 读回失败\n'; out(); setStatus('s6','b6','fail','读失败'); };
+    };
+    tx.onerror = function(){ log += '❌ 写入失败: ' + tx.error + '\n'; out(); setStatus('s6','b6','fail','写失败'); };
+  };
+}
+
+/* ---------- 通用 ---------- */
+function setStatus(sec, badge, cls, txt){
+  var s = document.getElementById(sec);
+  s.className = cls || '';
+  document.getElementById(badge).textContent = txt;
+}
+function mark(k, v){
+  R.marks[k] = v;
+  if (k === 'tts') {
+    document.getElementById('ttsLog').textContent = '已记录: ' + ({ok:'✅ 清楚够大',weak:'⚠️ 小声/卡顿',bad:'❌ 没声音/听不懂'})[v];
+    setStatus('s4','b4', v==='ok'?'pass':(v==='weak'?'warn':'fail'), ({ok:'通过',weak:'勉强',bad:'不可用'})[v]);
+  }
+  if (k === 'read') {
+    document.getElementById('readLog').textContent = '已记录: 最小可读 ' + v + 'px';
+    setStatus('s7','b7','pass', v + 'px');
+  }
+}
+function buildReport(){
+  return JSON.stringify({ device: R.device, caps: R.caps, marks: R.marks, events: R.events.slice(-60) }, null, 1);
+}
+function showAll(){ var p = document.getElementById('allLog'); p.style.display='block'; p.textContent = buildReport(); }
+function copyAll(){
+  var t = buildReport();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(function(){ alert('✅ 已复制，粘贴发我'); }, function(){ fallbackCopy(t); });
+  } else fallbackCopy(t);
+}
+function fallbackCopy(t){
+  var ta = document.createElement('textarea');
+  ta.value = t; ta.style.position='fixed'; ta.style.top='0'; ta.style.left='0'; ta.style.width='100%'; ta.style.height='60%';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); alert('✅ 已复制'); } catch(e){ alert('自动复制失败，请长按下方文本框全选复制'); }
+  setTimeout(function(){ ta.remove(); }, 200);
+  showAll();
+}
+</script>
+</body>
+</html>

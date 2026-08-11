@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "garage-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "garage_db",
+      "database_id": "f3490489-d791-479e-89c2-3af9b2d337f3"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "garage-photos"
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "garage.20040114.xyz",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGIN": "https://leonardw-sl.github.io",
+    "OCR_BASE_URL": "https://api.siliconflow.cn/v1/chat/completions",
+    "OCR_MODEL": "Qwen/Qwen2.5-VL-32B-Instruct"
+  }
+}

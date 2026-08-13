@@ -103,3 +103,73 @@ assert good in ids, f"the unrelated job was lost to another job's conflict: {sor
 assert dup_a in ids, f"the original job disappeared: {sorted(ids)}"
 print('PASS a duplicate receipt number does not poison the batch')
 PY
+
+# ---------------------------------------------------------------------------
+# /ocr guardrails.
+#
+# This endpoint proxies a paid vision API, so an unauthenticated or unbounded
+# request costs real money. These cases hold with or without OCR_API_KEY set:
+# auth and the size limit must both be decided before the upstream call.
+# ---------------------------------------------------------------------------
+
+code() {  # method url [data] [auth]
+  local url="$1" data="$2" auth="$3"
+  if [ -n "$auth" ]; then
+    curl -s -o /tmp/ocr-body.json -w '%{http_code}' --max-time 20 -X POST "$url" \
+      -H "Authorization: Bearer $auth" -H 'Content-Type: application/json' --data-binary "$data"
+  else
+    curl -s -o /tmp/ocr-body.json -w '%{http_code}' --max-time 20 -X POST "$url" \
+      -H 'Content-Type: application/json' --data-binary "$data"
+  fi
+}
+
+small='{"image":"data:image/png;base64,iVBORw0KGgo=","kind":"plate"}'
+
+got=$(code "$BASE_URL/ocr" "$small" "")
+if [ "$got" != "401" ]; then
+  echo "FAIL /ocr without a token returned $got, expected 401 (anyone could spend the OCR budget)"
+  cat /tmp/ocr-body.json; exit 1
+fi
+echo "PASS /ocr rejects an unauthenticated request"
+
+got=$(code "$BASE_URL/ocr" "$small" "wrong-token-entirely")
+if [ "$got" != "401" ]; then
+  echo "FAIL /ocr with a bad token returned $got, expected 401"
+  cat /tmp/ocr-body.json; exit 1
+fi
+echo "PASS /ocr rejects a wrong token"
+
+# An oversized image must be refused before it reaches the paid upstream.
+python3 - <<'PY' > /tmp/ocr-big.json
+import json
+print(json.dumps({'image': 'data:image/jpeg;base64,' + 'A' * (700 * 1024), 'kind': 'plate'}))
+PY
+got=$(code "$BASE_URL/ocr" "@/tmp/ocr-big.json" "$SYNC_TOKEN")
+if [ "$got" != "413" ]; then
+  echo "FAIL an oversized photo returned $got, expected 413 before the upstream call"
+  head -c 300 /tmp/ocr-body.json; exit 1
+fi
+echo "PASS /ocr refuses an oversized photo"
+
+# The limit must not reject a real photo: a 300KB JPEG base64-encodes to ~400KB.
+# If this starts returning 413, phone photos stop working entirely.
+python3 - <<'PY' > /tmp/ocr-real.json
+import json
+print(json.dumps({'image': 'data:image/jpeg;base64,' + 'A' * (400 * 1024), 'kind': 'plate'}))
+PY
+got=$(code "$BASE_URL/ocr" "@/tmp/ocr-real.json" "$SYNC_TOKEN")
+if [ "$got" = "413" ]; then
+  echo "FAIL a realistic 300KB photo was rejected as too large — the phone could never use OCR"
+  cat /tmp/ocr-body.json; exit 1
+fi
+echo "PASS /ocr accepts a realistically sized photo (got $got)"
+
+# A non-image payload must be refused too.
+got=$(code "$BASE_URL/ocr" '{"image":"https://example.com/x.jpg","kind":"plate"}' "$SYNC_TOKEN")
+if [ "$got" != "400" ] && [ "$got" != "503" ]; then
+  echo "FAIL a non-data-URL image returned $got, expected 400 (or 503 when unconfigured)"
+  cat /tmp/ocr-body.json; exit 1
+fi
+echo "PASS /ocr refuses a non-data-URL image (got $got)"
+
+rm -f /tmp/ocr-big.json /tmp/ocr-real.json /tmp/ocr-body.json

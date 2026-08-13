@@ -85,6 +85,9 @@ table.rp-items th{background:#f0f0f0}
 .toast.show{opacity:1}
 .speak-indicator{position:fixed;top:60px;right:12px;background:var(--accent2);color:#000;padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;display:none;z-index:200}
 .speak-indicator.on{display:block;animation:pulse .6s infinite}
+/* Stays visible: it is the standing sign that nothing is being read aloud. */
+.speak-indicator.mute{display:block;background:#c62828;color:#fff;animation:none}
+.speak-indicator.mute::after{content:" 🔇"}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 </style>
 </head>
@@ -934,9 +937,27 @@ function todayStr(d) {
 // ================= 朗读 =================
 // Every number this user "reads" he actually hears, so speak() is load-bearing
 // rather than an accessibility extra.
+/**
+ * Speech failed. Tell him in the only channel he can still read.
+ *
+ * He cannot read 汉字, so a text toast is not a fallback for him — it is a
+ * fallback for whoever he hands the phone to. What he can perceive is the
+ * vibration and the crossed-out speaker, which is his cue that the numbers on
+ * screen were never read aloud and he needs someone to check them. Reported
+ * once per session: repeating it every save would train him to ignore it.
+ */
+var SPEAK_START_TIMEOUT = 1500;
+function reportMuteOnce(reason) {
+  var ind = document.getElementById("speakIndicator");
+  if (ind) { ind.classList.remove("on"); ind.classList.add("mute"); }
+  try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) {}
+  if (reportMuteOnce._done) return;
+  reportMuteOnce._done = true;
+  toast("🔇 手机读不出声音，数字请找人核对");
+}
 function speak(text) {
   if (!text) return;
-  if (!window.speechSynthesis) return;
+  if (!window.speechSynthesis) { reportMuteOnce("no speechSynthesis"); return; }
   try {
     window.speechSynthesis.cancel();
     var utter = new SpeechSynthesisUtterance(String(text));
@@ -944,17 +965,37 @@ function speak(text) {
     utter.rate = 0.85;   // slower than default: he is listening for digits
     utter.pitch = 1;
     var voices = window.speechSynthesis.getVoices() || [];
+    var zh = null;
     for (var i = 0; i < voices.length; i++) {
-      if (voices[i].lang && voices[i].lang.indexOf("zh") === 0) { utter.voice = voices[i]; break; }
+      if (voices[i].lang && voices[i].lang.indexOf("zh") === 0) { zh = voices[i]; break; }
+    }
+    if (zh) {
+      utter.voice = zh;
+    } else if (voices.length) {
+      // Voices are loaded and none speak Chinese: an English engine reading
+      // Chinese produces nothing he can use, so treat it as mute. An empty
+      // list is different — Android often fills it in late, so we still try.
+      reportMuteOnce("no zh voice");
+      return;
     }
     var ind = document.getElementById("speakIndicator");
-    if (ind) {
-      ind.classList.add("on");
-      utter.onend = function() { ind.classList.remove("on"); };
-      utter.onerror = function() { ind.classList.remove("on"); };
-    }
+    if (ind) ind.classList.add("on");
+    var clear = function() { if (ind) ind.classList.remove("on"); };
+    var started = false;
+    utter.onstart = function() { started = true; if (ind) ind.classList.remove("mute"); };
+    utter.onend = clear;
+    utter.onerror = function() { clear(); reportMuteOnce("utterance error"); };
     window.speechSynthesis.speak(utter);
-  } catch (e) { /* TTS is best-effort; never break the flow over it */ }
+    // Some Android engines accept the utterance and then never speak, firing
+    // neither onstart nor onerror. Without this watchdog that failure is
+    // completely invisible — the worst case for someone who cannot read.
+    setTimeout(function() {
+      if (!started) { clear(); reportMuteOnce("never started"); }
+    }, SPEAK_START_TIMEOUT);
+  } catch (e) {
+    // TTS must never break the flow, but it must not fail invisibly either.
+    reportMuteOnce("speak threw: " + e.message);
+  }
 }
 
 // ================= 历史账目 =================
@@ -993,9 +1034,30 @@ function speakRecord(id) {
 }
 
 // ================= 数据导出 / 清空 =================
+/**
+ * Settings minus the secrets, for anything that leaves the phone.
+ *
+ * A backup lands in Downloads and on the WebDAV server, so it must carry the
+ * ledger and his preferences but never the credentials that reach them —
+ * otherwise a copied backup file is itself a working key. The restore path
+ * already refuses to import credentials, so both directions now agree.
+ */
+var SECRET_SETTINGS = ["webdavPass", "syncToken"];
+function publicSettings() {
+  var out = {};
+  for (var k in settings) {
+    if (!Object.prototype.hasOwnProperty.call(settings, k)) continue;
+    if (SECRET_SETTINGS.indexOf(k) >= 0) continue;
+    out[k] = settings[k];
+  }
+  return out;
+}
+function backupPayload() {
+  return { records: records, settings: publicSettings(), exportedAt: new Date().toISOString() };
+}
 function exportData() {
   try {
-    var payload = JSON.stringify({ records: records, settings: settings, exportedAt: new Date().toISOString() }, null, 2);
+    var payload = JSON.stringify(backupPayload(), null, 2);
     var blob = new Blob([payload], { type: "application/json" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -1050,7 +1112,7 @@ function backupToWebdav() {
   fetch(cfg.url + filename, {
     method: "PUT",
     headers: { "Authorization": cfg.auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ records: records, settings: settings, exportedAt: new Date().toISOString() })
+    body: JSON.stringify(backupPayload())
   }).then(function(res) {
     if (res.ok || res.status === 201 || res.status === 204) {
       toast("✅ 备份成功 (" + records.length + " 条)");

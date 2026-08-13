@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>真机自检 · 汽修记账助手</title>
+<!--
+  Real-device self test.
+
+  The desktop suites all pass in headless Blink, but OriginOS's built-in browser
+  is not Blink-on-a-laptop: the highest-risk paths are the SVG foreignObject
+  receipt export (needs KaiTi to exist and foreignObject to rasterize), the
+  360px layout, and whether a Chinese TTS voice exists at all.
+
+  This page does NOT reimplement any of that. It loads the real index.html in an
+  iframe and calls the app's own functions, so it cannot pass while the app is
+  broken. One screenshot of the verdict at the top is the whole deliverable.
+-->
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#12121c;color:#eee;font-size:16px;line-height:1.55;padding:12px 12px 40px}
+h1{font-size:19px}
+h1 small{display:block;font-size:13px;color:#889;font-weight:400;margin-top:2px}
+#verdict{margin-top:12px;border-radius:14px;padding:18px;text-align:center;background:#39394d;font-weight:800}
+#verdict.pass{background:#1e6b32}
+#verdict.fail{background:#98271b}
+#verdictBig{font-size:44px;line-height:1.1}
+#verdictSub{font-size:15px;font-weight:600;margin-top:6px}
+.row{display:flex;align-items:flex-start;gap:10px;background:#1c1c2b;border-radius:10px;padding:12px;margin-top:8px;border-left:4px solid #444}
+.row.pass{border-left-color:#3fa34d}
+.row.fail{border-left-color:#c0392b}
+.row.warn{border-left-color:#d18b16}
+.mark{font-size:24px;flex-shrink:0;width:28px;text-align:center}
+.body{flex:1;min-width:0}
+.name{font-size:15px;font-weight:700}
+.detail{font-size:13px;color:#9aa;word-break:break-all;margin-top:2px}
+button{width:100%;padding:16px;margin-top:10px;border:none;border-radius:10px;background:#2d5be3;color:#fff;font-size:17px;font-weight:700}
+button:active{opacity:.7}
+button.sec{background:#39394d}
+h2{font-size:15px;color:#99a;margin-top:18px;border-bottom:1px solid #2a2a3a;padding-bottom:4px}
+iframe{width:360px;height:640px;border:0;position:absolute;left:-10000px;top:0}
+img.shot{max-width:100%;border-radius:8px;margin-top:8px;background:#fff}
+pre{background:#0c0c14;border-radius:8px;padding:10px;margin-top:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
+.note{font-size:13px;color:#99a;margin-top:6px}
+</style>
+</head>
+<body>
+
+<h1>真机自检<small>点下面的按钮，等它跑完，把最上面的大字截图发我</small></h1>
+
+<div id="verdict"><div id="verdictBig">未开始</div><div id="verdictSub">点下面的绿色按钮</div></div>
+
+<button id="runBtn" onclick="runAll()">▶ 开始自检（约 15 秒）</button>
+
+<h2>自动检查</h2>
+<div id="rows"></div>
+
+<h2>收据图片（这张必须看起来像收据）</h2>
+<div class="note">要有表格框线、楷体字、不能是一堆没样式的字，也不能大片空白。</div>
+<div id="shotBox"></div>
+
+<h2>需要你用耳朵判断</h2>
+<div class="note">自动检查只能确认「有中文语音引擎」，好不好懂只有你能听。</div>
+<button class="sec" onclick="speakTest()">🔊 点这里念一句（听清楚了吗？）</button>
+<div id="ttsBox"></div>
+
+<h2>原始结果（出问题时发我这段）</h2>
+<pre id="raw">还没跑</pre>
+<button class="sec" onclick="copyRaw()">📋 复制全部结果</button>
+
+<iframe id="app" src="./index.html"></iframe>
+
+<script>
+var results = [];
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function add(name, state, detail) {
+  results.push({ name: name, state: state, detail: detail == null ? "" : String(detail) });
+  var d = document.createElement("div");
+  d.className = "row " + state;
+  d.innerHTML = '<div class="mark">' + (state === "pass" ? "✅" : state === "warn" ? "⚠️" : "❌") +
+    '</div><div class="body"><div class="name">' + esc(name) + '</div>' +
+    (detail ? '<div class="detail">' + esc(detail) + "</div>" : "") + "</div>";
+  document.getElementById("rows").appendChild(d);
+  document.getElementById("raw").textContent = dump();
+}
+function dump() {
+  var out = "== 真机自检 " + new Date().toISOString() + " ==\n";
+  out += "UA: " + navigator.userAgent + "\n";
+  out += "屏幕: " + screen.width + "x" + screen.height + " dpr=" + (window.devicePixelRatio || "?") +
+         " 视口: " + window.innerWidth + "x" + window.innerHeight + "\n\n";
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    out += (r.state === "pass" ? "[OK]  " : r.state === "warn" ? "[WARN]" : "[FAIL]") +
+           " " + r.name + (r.detail ? " — " + r.detail : "") + "\n";
+  }
+  return out;
+}
+function copyRaw() {
+  var t = dump();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(function() { alert("已复制，粘贴发我"); },
+      function() { alert("复制失败，长按上面那段文字手动选中"); });
+  } else {
+    alert("这个浏览器不支持一键复制，长按上面那段文字手动选中");
+  }
+}
+function verdict() {
+  var fails = results.filter(function(r) { return r.state === "fail"; });
+  var warns = results.filter(function(r) { return r.state === "warn"; });
+  var v = document.getElementById("verdict");
+  if (fails.length) {
+    v.className = "fail";
+    document.getElementById("verdictBig").textContent = fails.length + " 项不行";
+    document.getElementById("verdictSub").textContent = "截图发我，我来修";
+  } else {
+    v.className = "pass";
+    document.getElementById("verdictBig").textContent = "全部通过";
+    document.getElementById("verdictSub").textContent =
+      warns.length ? warns.length + " 项要注意，但不影响用" : "这台手机能用";
+  }
+}
+function wait(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+function appWin() { return document.getElementById("app").contentWindow; }
+
+/**
+ * Reload the app in the iframe from the network before each run.
+ *
+ * Without this, a re-run tests the copy the browser already had, so a fix you
+ * just deployed would look like it changed nothing.
+ */
+function reloadApp() {
+  return new Promise(function(resolve) {
+    var f = document.getElementById("app");
+    var done = false;
+    var finish = function() { if (!done) { done = true; resolve(); } };
+    f.onload = function() { setTimeout(finish, 400); };
+    f.src = "./index.html?t=" + Date.now();
+    setTimeout(finish, 12000);   // never hang the run on a slow load
+  });
+}
+
+var SAMPLE = {
+  id: "selftest_1", date: null, plate: "皖A12345", customer: "", receiptNo: "GX-SELFTEST-1",
+  items: [
+    { part: "三元催化器", cost: 800, shipping: 12.5, totalCost: 812.5, finalPrice: 1200 },
+    { part: "机油滤芯", cost: 35, shipping: 0, totalCost: 35, finalPrice: 80 }
+  ],
+  totalCost: 847.5, totalIncome: 1280, createdAt: new Date().toISOString()
+};
+
+/**
+ * Always hand the button back.
+ *
+ * The run has several early exits, and on the worst one — the app not booting —
+ * that is exactly when he most needs to retry. A stuck disabled button would
+ * make the page a dead end.
+ */
+async function runAll() {
+  try {
+    await runChecks();
+  } catch (e) {
+    add("自检本身出错了", "fail", e && e.message ? e.message : String(e));
+    verdict();
+  } finally {
+    var btn = document.getElementById("runBtn");
+    btn.disabled = false;
+    btn.textContent = "▶ 再跑一次";
+  }
+}
+
+async function runChecks() {
+  document.getElementById("runBtn").disabled = true;
+  document.getElementById("rows").innerHTML = "";
+  document.getElementById("shotBox").innerHTML = "";
+  results = [];
+  document.getElementById("verdict").className = "";
+  document.getElementById("verdictBig").textContent = "跑着…";
+  document.getElementById("verdictSub").textContent = "别关屏幕";
+
+  await reloadApp();
+
+  var w;
+  try {
+    w = appWin();
+    if (!w || !w.document) throw new Error("拿不到 app 窗口");
+  } catch (e) {
+    add("能打开 app 本体", "fail", e.message + "（可能是浏览器拦了 iframe）");
+    verdict();
+    return;
+  }
+
+  // 0 — the app has to boot at all.
+  var booted = false;
+  for (var i = 0; i < 40 && !booted; i++) {
+    try { booted = typeof w.todayStr === "function" && typeof w.renderReceipt === "function"; }
+    catch (e) { booted = false; }
+    if (!booted) await wait(250);
+  }
+  add("app 本体能启动", booted ? "pass" : "fail", booted ? "" : "10 秒内没就绪");
+  if (!booted) { verdict(); return; }
+
+  // 1 — layout at this phone's real width.
+  try {
+    var d = w.document;
+    var de = d.documentElement;
+    var over = de.scrollWidth - de.clientWidth;
+    add("屏幕宽度没被撑破", over <= 2 ? "pass" : "fail",
+        "多出 " + over + "px（视口 " + w.innerWidth + "px, dpr " + (w.devicePixelRatio || "?") + "）");
+
+    var small = [], wrapped = [];
+    var btns = d.querySelectorAll("button");
+    for (var j = 0; j < btns.length; j++) {
+      var b = btns[j];
+      if (!b.offsetParent && b.offsetHeight === 0) continue;
+      var r = b.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && r.height < 44) small.push((b.textContent || "").trim().slice(0, 8) + ":" + Math.round(r.height));
+      // Count real line boxes of the button's OWN label only. Measuring the
+      // whole button counts intentional subtitle spans as wrapping, which is
+      // how this check first cried wolf on 「开始记账」.
+      if (r.height > 0) {
+        var label = "", lines = 0, seen = [];
+        try {
+          for (var q = 0; q < b.childNodes.length; q++) {
+            var node = b.childNodes[q];
+            if (node.nodeType !== 3) continue;          // direct text nodes only
+            var txt = (node.nodeValue || "").trim();
+            if (!txt) continue;
+            label += txt;
+            var rng = w.document.createRange();
+            rng.selectNodeContents(node);
+            var rects = rng.getClientRects();
+            for (var m = 0; m < rects.length; m++) {
+              var top = Math.round(rects[m].top);
+              if (rects[m].height > 0 && seen.indexOf(top) < 0) { seen.push(top); lines++; }
+            }
+          }
+          if (lines > 1) wrapped.push(label.slice(0, 10) + "(" + lines + "行)");
+        } catch (e) {}
+      }
+    }
+    add("按钮够大（手指点得中）", small.length === 0 ? "pass" : "fail",
+        small.length ? "太小: " + small.join(", ") : btns.length + " 个按钮都 ≥44px");
+    add("按钮文字没换行", wrapped.length === 0 ? "pass" : "warn",
+        wrapped.length ? "疑似换行: " + wrapped.join(", ") : "");
+  } catch (e) {
+    add("屏幕布局检查", "fail", e.message);
+  }
+
+  // 2 — Chinese TTS engine presence. This is the app's main road.
+  try {
+    var voices = [];
+    for (var k = 0; k < 8; k++) {
+      voices = (w.speechSynthesis && w.speechSynthesis.getVoices()) || [];
+      if (voices.length) break;
+      await wait(300);
+    }
+    var zh = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf("zh") === 0; });
+    var names = zh.map(function(v) { return v.name + "(" + v.lang + ")"; }).join(", ");
+    add("有中文朗读引擎", zh.length ? "pass" : "fail",
+        zh.length ? names : "共 " + voices.length + " 个语音，没有中文 → app 会显示红色 🔇");
+  } catch (e) {
+    add("有中文朗读引擎", "fail", e.message);
+  }
+
+  // 3 — the fonts the receipt depends on.
+  // document.fonts.check() is useless here: Chrome returns true for any family
+  // name, including ones that do not exist. Measuring text width against a
+  // deliberately fake family is what actually distinguishes them.
+  try {
+    var cv = w.document.createElement("canvas");
+    var cx = cv.getContext("2d");
+    var probe = "收据壹贰叁肆伍";
+    var widthWith = function(fam) { cx.font = "40px " + fam + ", monospace"; return cx.measureText(probe).width; };
+    cx.font = "40px monospace";
+    var baseline = cx.measureText(probe).width;
+    var fakeW = widthWith("NoSuchFontXY9");
+    var present = [], absent = [];
+    ["KaiTi", "STKaiti", "SimSun", "Songti SC"].forEach(function(fam) {
+      var wid = widthWith(fam);
+      // Present if it renders differently from the fake-family fallback.
+      if (Math.abs(wid - fakeW) > 0.5 || Math.abs(wid - baseline) > 0.5) present.push(fam);
+      else absent.push(fam);
+    });
+    add("收据字体存在", present.length ? "pass" : "warn",
+        present.length ? "可用: " + present.join(", ")
+                       : "楷体/宋体都没有（收据会用默认字体，仍能看，只是不像手写单）");
+  } catch (e) {
+    add("收据字体存在", "warn", e.message);
+  }
+
+  // 4 — a full record through the app's own ledger + receipt code.
+  try {
+    var rec = JSON.parse(JSON.stringify(SAMPLE));
+    rec.date = w.todayStr();
+    w.records = [rec];
+    w.renderReceipt(rec);   // takes the record itself, not an id
+    var txt = w.document.getElementById("receiptPage").textContent || "";
+    add("收据能生成", txt.length > 20 ? "pass" : "fail", txt.length + " 字");
+    var leaks = ["成本", "利润", "运费", "参考价", "赚"].filter(function(s) { return txt.indexOf(s) >= 0; });
+    add("收据没泄露成本/利润", leaks.length === 0 ? "pass" : "fail",
+        leaks.length ? "出现了: " + leaks.join(" ") : "只有项目和收款");
+    add("收据金额正确", txt.indexOf("1280") >= 0 ? "pass" : "fail",
+        txt.indexOf("1280") >= 0 ? "应收 1280" : "没找到 1280");
+  } catch (e) {
+    add("收据能生成", "fail", e.message);
+  }
+
+  // 5 — THE high-risk path: SVG foreignObject -> canvas on this engine.
+  try {
+    if (typeof w.__renderReceiptCanvas !== "function") {
+      add("收据能转成图片", "fail", "app 没暴露 __renderReceiptCanvas");
+    } else {
+      var shot = await w.__renderReceiptCanvas();
+      if (!shot || !shot.ok) {
+        add("收据能转成图片", "fail", (shot && (shot.error || shot.reason)) || "未知失败");
+      } else {
+        var c = shot.canvas;
+        add("收据能转成图片", "pass", c.width + "x" + c.height);
+        // Same pixel checks the desktop suite runs, same thresholds.
+        var ctx = c.getContext("2d");
+        var px = ctx.getImageData(0, 0, c.width, c.height).data;
+        var rowInk = [], y, x;
+        for (y = 0; y < c.height; y++) {
+          var ink = 0;
+          for (x = 0; x < c.width; x++) {
+            var p = (y * c.width + x) * 4;
+            if (px[p] < 200 && px[p + 1] < 200 && px[p + 2] < 200) ink++;
+          }
+          rowInk.push(ink);
+        }
+        var dark = rowInk.reduce(function(a, b) { return a + b; }, 0);
+        var lastInk = 0;
+        for (y = 0; y < rowInk.length; y++) if (rowInk[y] > 0) lastInk = y;
+        var ruleRows = rowInk.filter(function(n) { return n > c.width * 0.5; }).length;
+        var tailBlank = 1 - lastInk / c.height;
+        add("图片不是空白", dark > 2000 ? "pass" : "fail", dark + " 个黑点");
+        add("图片有表格框线（样式没丢）", ruleRows >= 3 ? "pass" : "fail",
+            ruleRows + " 条整行横线" + (ruleRows < 3 ? "（CSS 没进图，这是硬伤）" : ""));
+        add("图片底部没有大片空白", tailBlank < 0.15 ? "pass" : "fail",
+            Math.round(tailBlank * 100) + "% 空白");
+        try {
+          var url = c.toDataURL("image/png");
+          add("图片能导出（没被浏览器污染）", url.indexOf("data:image/png") === 0 ? "pass" : "fail",
+              Math.round(url.length / 1024) + "KB");
+          document.getElementById("shotBox").innerHTML =
+            '<img class="shot" src="' + url + '" alt="收据图片">';
+        } catch (e2) {
+          add("图片能导出（没被浏览器污染）", "fail", "toDataURL 失败: " + e2.message);
+        }
+      }
+    }
+  } catch (e) {
+    add("收据能转成图片", "fail", e.message);
+  }
+
+  // 6 — offline storage: the ledger must survive with no signal.
+  try {
+    w.localStorage.setItem("__selftest", "1");
+    var got = w.localStorage.getItem("__selftest");
+    w.localStorage.removeItem("__selftest");
+    add("能离线存账（localStorage）", got === "1" ? "pass" : "fail",
+        got === "1" ? "" : "无痕模式下会丢账，别用无痕");
+  } catch (e) {
+    add("能离线存账（localStorage）", "fail", e.message + "（可能是无痕模式）");
+  }
+
+  // 7 — installability + offline shell.
+  try {
+    add("能装成桌面图标（Service Worker）", "serviceWorker" in w.navigator ? "pass" : "warn",
+        "serviceWorker" in w.navigator ? "" : "装不了，只能当网页用");
+    var mf = w.document.querySelector('link[rel="manifest"]');
+    add("有安装清单 manifest", mf ? "pass" : "fail", mf ? mf.getAttribute("href") : "缺失");
+  } catch (e) {
+    add("能装成桌面图标（Service Worker）", "warn", e.message);
+  }
+
+  // 8 — camera entry point, for the OCR work that comes next.
+  try {
+    var hasCam = !!(w.navigator.mediaDevices && w.navigator.mediaDevices.getUserMedia);
+    var probe = w.document.createElement("input");
+    probe.setAttribute("capture", "environment");
+    var hasCapture = "capture" in probe;
+    add("能调摄像头（给拍照识别用）", (hasCam || hasCapture) ? "pass" : "warn",
+        "getUserMedia=" + hasCam + " capture属性=" + hasCapture);
+  } catch (e) {
+    add("能调摄像头（给拍照识别用）", "warn", e.message);
+  }
+
+  // Leave no test data behind in the real ledger.
+  try {
+    w.records = [];
+    if (typeof w.saveRecords === "function") w.saveRecords();
+    w.localStorage.removeItem("garage_records");
+  } catch (e) {}
+
+  verdict();
+}
+
+function speakTest() {
+  var box = document.getElementById("ttsBox");
+  var line = "皖 A 1 2 3 4 5, 收了一千二百八十元。";
+  try {
+    var w = appWin();
+    var sy = w.speechSynthesis || window.speechSynthesis;
+    if (!sy) { box.innerHTML = '<div class="row fail"><div class="mark">❌</div><div class="body"><div class="name">这个浏览器没有朗读功能</div></div></div>'; return; }
+    sy.cancel();
+    var u = new (w.SpeechSynthesisUtterance || window.SpeechSynthesisUtterance)(line);
+    u.lang = "zh-CN"; u.rate = 0.85;
+    var vs = sy.getVoices() || [];
+    for (var i = 0; i < vs.length; i++) {
+      if (vs[i].lang && vs[i].lang.toLowerCase().indexOf("zh") === 0) { u.voice = vs[i]; break; }
+    }
+    var started = false;
+    u.onstart = function() {
+      started = true;
+      box.innerHTML = '<div class="row pass"><div class="mark">🔊</div><div class="body">' +
+        '<div class="name">正在念，听得清吗？</div><div class="detail">' + esc(line) + '</div></div></div>';
+    };
+    u.onerror = function(e) {
+      box.innerHTML = '<div class="row fail"><div class="mark">❌</div><div class="body">' +
+        '<div class="name">朗读报错了</div><div class="detail">' + esc((e && e.error) || "") + '</div></div></div>';
+    };
+    sy.speak(u);
+    setTimeout(function() {
+      if (!started) {
+        box.innerHTML = '<div class="row fail"><div class="mark">❌</div><div class="body">' +
+          '<div class="name">交给引擎了，但一直没开口</div>' +
+          '<div class="detail">先检查手机没静音、音量开着；还是不响就是引擎问题，截图发我</div></div></div>';
+      }
+    }, 2500);
+  } catch (e) {
+    box.innerHTML = '<div class="row fail"><div class="mark">❌</div><div class="body"><div class="name">' + esc(e.message) + '</div></div></div>';
+  }
+}
+</script>
+</body>
+</html>

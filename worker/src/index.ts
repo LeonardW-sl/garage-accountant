@@ -12,6 +12,9 @@ interface Env {
 
 const MAX_PHOTO_BYTES = 300 * 1024;
 const MAX_JSON_BYTES = 512 * 1024;
+// A 300KB JPEG becomes ~400KB once base64-encoded into the data URL, plus the
+// surrounding JSON. This bounds the OCR proxy without rejecting a real photo.
+const MAX_OCR_BYTES = 450 * 1024;
 
 function cors(env: Env, origin: string | null): Record<string, string> {
   const allowed = env.ALLOWED_ORIGIN.split(',').map((s) => s.trim());
@@ -284,9 +287,27 @@ async function handlePhoto(
 async function handleOcr(
   request: Request, env: Env, h: Record<string, string>,
 ): Promise<Response> {
+  // Size first: this endpoint forwards the image to a paid vision API, so an
+  // unbounded body is a billing problem, not just a slow request. Checked
+  // before the key so the limit holds whether or not OCR is configured.
+  const declared = Number(request.headers.get('Content-Length') ?? '0');
+  if (declared > MAX_OCR_BYTES) {
+    return json({ error: 'photo too large', max: MAX_OCR_BYTES }, { status: 413 }, h);
+  }
+
   if (!env.OCR_API_KEY) return json({ error: 'ocr not configured' }, { status: 503 }, h);
 
-  const body = (await request.json()) as { image?: string; kind?: string };
+  const raw = await request.text();
+  // A chunked request has no Content-Length, so re-check the body we actually got.
+  if (raw.length > MAX_OCR_BYTES) {
+    return json({ error: 'photo too large', max: MAX_OCR_BYTES }, { status: 413 }, h);
+  }
+  let body: { image?: string; kind?: string };
+  try {
+    body = JSON.parse(raw) as { image?: string; kind?: string };
+  } catch {
+    return json({ error: 'bad json' }, { status: 400 }, h);
+  }
   if (!body.image?.startsWith('data:image/')) {
     return json({ error: 'image must be a data URL' }, { status: 400 }, h);
   }

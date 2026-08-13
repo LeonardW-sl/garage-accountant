@@ -14,7 +14,7 @@ html,body{height:100%;overflow:hidden}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:20px;line-height:1.5;display:flex;flex-direction:column}
 header{background:var(--accent);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10}
 header h1{font-size:20px;font-weight:700}
-header button{background:none;border:none;color:#fff;font-size:24px;padding:8px;cursor:pointer;border-radius:50%;width:44px;height:44px}
+header button{background:none;border:none;color:#fff;font-size:24px;padding:8px;cursor:pointer;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center}
 .view{display:none;flex-direction:column;flex:1;overflow:hidden;padding:16px}
 .view.active{display:flex}
 /* ===== 首页 ===== */
@@ -111,8 +111,8 @@ table.rp-items th{background:#f0f0f0}
     <div class="hs-row"><span class="hs-label">📈 今天利润</span><span class="hs-val" id="todayProfit">¥0</span></div>
   </div>
   <div style="display:flex;gap:12px;margin-top:16px">
-    <button class="big-btn orange" style="font-size:18px;padding:16px" onclick="showView('historyView')">📋 历史账目</button>
-    <button class="big-btn orange" style="font-size:18px;padding:16px" onclick="showView('settingsView')">⚙️ 设置</button>
+    <button class="big-btn orange" style="font-size:18px;padding:16px 8px;white-space:nowrap" onclick="showView('historyView')">📋 历史账目</button>
+    <button class="big-btn orange" style="font-size:18px;padding:16px 8px;white-space:nowrap" onclick="showView('settingsView')">⚙️ 设置</button>
   </div>
 </div>
 
@@ -708,39 +708,99 @@ function finishRecord() {
  * workshop, and jsDelivr is unreliable in China, so a runtime download meant
  * the button simply failed when it was needed. SVG foreignObject ships nothing.
  */
-function saveReceiptImage() {
+// The receipt styles, inlined into the exported SVG. A foreignObject carries
+// the cloned DOM but NOT the page stylesheet, so without this the saved image
+// is an unstyled wall of text: no table grid, no centring, no rules. The image
+// is what the customer keeps, so it has to look like a real settlement note.
+var RECEIPT_EXPORT_CSS =
+  '*{margin:0;padding:0;box-sizing:border-box}' +
+  '.receipt-page{background:#fff;color:#000;padding:24px 20px;' +
+    'font-family:"KaiTi","STKaiti","SimSun",serif;font-size:16px;line-height:1.5}' +
+  '.rp-title{text-align:center;font-size:26px;font-weight:700;letter-spacing:4px;' +
+    'border-bottom:3px double #000;padding-bottom:8px;margin-bottom:10px}' +
+  '.rp-shop{text-align:center;font-size:18px;margin-bottom:4px}' +
+  '.rp-meta{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}' +
+  '.rp-contact{text-align:center;font-size:14px;margin-bottom:10px;' +
+    'border-bottom:1px solid #000;padding-bottom:8px}' +
+  'table.rp-items{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}' +
+  'table.rp-items th,table.rp-items td{border:1px solid #000;padding:6px 4px;text-align:center}' +
+  'table.rp-items th{background:#f0f0f0}' +
+  '.rp-total{display:flex;justify-content:space-between;font-size:17px;padding:6px 0;' +
+    'border-bottom:1px solid #000}' +
+  '.rp-total .big{font-size:22px;font-weight:700}' +
+  '.rp-note{margin-top:10px;font-size:14px;border:1px solid #000;padding:8px;min-height:40px}' +
+  '.rp-sign{display:flex;justify-content:space-between;font-size:15px;margin-top:24px}' +
+  '.rp-foot{text-align:center;font-size:12px;color:#666;margin-top:16px}';
+
+/**
+ * Draw the receipt onto a canvas and hand it back.
+ *
+ * Split out from the download so the render can be verified on its own: the
+ * saved PNG once looked nothing like the receipt while every assertion passed,
+ * because "the file encodes and has dark pixels" says nothing about styling.
+ */
+function renderReceiptCanvas() {
   var page = document.getElementById("receiptPage");
+  var clone = page.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+
+  var width = page.offsetWidth || 360;
+  // scrollHeight of a flex child includes the space it was stretched into, which
+  // produced a tall blank tail. Measure the content itself instead.
+  var probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:-10000px;top:0;width:" + width + "px;visibility:hidden";
+  var styled = document.createElement("style");
+  styled.textContent = RECEIPT_EXPORT_CSS;
+  probe.appendChild(styled);
+  probe.appendChild(clone.cloneNode(true));
+  document.body.appendChild(probe);
+  var height = Math.ceil(probe.getBoundingClientRect().height) || 640;
+  document.body.removeChild(probe);
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+    '<foreignObject width="100%" height="100%">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml">' +
+    '<style>' + RECEIPT_EXPORT_CSS + '</style>' +
+    new XMLSerializer().serializeToString(clone) +
+    '</div></foreignObject></svg>';
+
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      try {
+        var canvas = document.createElement("canvas");
+        var scale = 2;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        resolve({ ok: true, canvas: canvas });
+      } catch (e) {
+        resolve({ ok: false, error: e.name + ": " + e.message });
+      }
+    };
+    img.onerror = function() { resolve({ ok: false, error: "image failed to load" }); };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+// Exposed for the real-browser test, which verifies the pixels.
+window.__renderReceiptCanvas = renderReceiptCanvas;
+
+function saveReceiptImage() {
   var record = flow && flow.currentRecord ? flow.currentRecord : null;
   var name = "收据_" + (record ? record.receiptNo : todayStr()) + ".png";
-  var width = page.offsetWidth || 360;
-  var height = page.scrollHeight || 640;
 
   try {
-    var clone = page.cloneNode(true);
-    clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-    clone.style.width = width + "px";
-    clone.style.background = "#fff";
-    clone.style.color = "#000";
-    clone.style.fontFamily = "serif";
-
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
-      '<foreignObject width="100%" height="100%">' +
-      new XMLSerializer().serializeToString(clone) +
-      '</foreignObject></svg>';
-
-    var img = new Image();
-    var svgUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-    img.onload = function() {
-      var canvas = document.createElement("canvas");
-      var scale = 2;
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      var ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(function(blob) {
+    renderReceiptCanvas().then(function(res) {
+      if (!res.ok) {
+        toast("⚠️ 保存失败, 请用手机截屏发给客户");
+        speak("保存失败, 请用手机截屏发给客户。");
+        return;
+      }
+      res.canvas.toBlob(function(blob) {
         if (!blob) {
           toast("⚠️ 保存失败, 请截屏代替");
           speak("保存失败, 请用手机截屏发给客户。");
@@ -755,12 +815,7 @@ function saveReceiptImage() {
         toast("✅ 收据已保存, 可以发给客户");
         speak("收据已经保存, 可以发给客户。");
       }, "image/png");
-    };
-    img.onerror = function() {
-      toast("⚠️ 保存失败, 请用手机截屏发给客户");
-      speak("保存失败, 请用手机截屏发给客户。");
-    };
-    img.src = svgUrl;
+    });
   } catch (e) {
     toast("⚠️ 保存失败, 请用手机截屏");
     speak("保存失败, 请用手机截屏发给客户。");

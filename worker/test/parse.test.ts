@@ -80,4 +80,36 @@ describe('parseItem', () => {
   it('returns null on empty input', () => {
     expect(parseItem('   ')).toBeNull();
   });
+
+  // Real part names that begin with a Chinese numeral. Reading that numeral as
+  // the price turns an 800 yuan catalytic converter into 3 yuan — wrong money,
+  // silently, which is far worse than failing to parse. The name must also come
+  // back whole, because the schema promises spoken_name is never rewritten.
+  it('does not eat a numeral that belongs to the part name', () => {
+    expect(parseItem('三元催化器 800')).toMatchObject({
+      spokenName: '三元催化器', charge: 80000,
+    });
+    expect(parseItem('四轮定位 100')).toMatchObject({
+      spokenName: '四轮定位', charge: 10000,
+    });
+    expect(parseItem('二保焊丝 五十')).toMatchObject({
+      spokenName: '二保焊丝', charge: 5000,
+    });
+  });
+
+  it('does not scale up an explicit 零', () => {
+    // 一百零五 is 105. Treating the trailing 五 as shorthand yields 150.
+    expect(cnToNumber('一百零五')).toBe(105);
+    expect(cnToNumber('一百零八')).toBe(108);
+    // The shorthand itself must still work.
+    expect(cnToNumber('一百二')).toBe(120);
+    expect(cnToNumber('两千五')).toBe(2500);
+  });
+
+  it('never returns an empty spoken name when a name was said', () => {
+    for (const text of ['三元催化器 800', '机油滤芯 35', '漆管片 12']) {
+      const r = parseItem(text);
+      expect(r?.spokenName, `empty name for "${text}"`).toBeTruthy();
+    }
+  });
 });

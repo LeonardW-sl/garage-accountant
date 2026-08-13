@@ -44,3 +44,62 @@ assert job['plate'] == '皖A12345', f"stale job overwrote fresh job: {job}"
 assert [x['spoken_name'] for x in items] == ['最新明细'], f"stale items overwrote fresh items: {items}"
 print('PASS stale payload cannot overwrite job or items')
 PY
+
+# A duplicate receipt number must not poison the whole batch.
+#
+# The unique index on (device_id, receipt_no) is deliberate, but D1 runs a batch
+# as one transaction: without per-job isolation a single conflicting row rejects
+# every other job in the push, so one bad record silently blocks the entire
+# ledger from ever syncing.
+DUP_A="dup-receipt-job-a"
+DUP_B="dup-receipt-job-b"
+GOOD="dup-receipt-good-job"
+DUP_DEVICE="dup-receipt-device"
+DUP_NO="GX29991231-001"
+
+post "$(python3 - "$DUP_A" "$DUP_DEVICE" "$DUP_NO" "$NOW_MS" <<'PY'
+import json, sys
+job, device, receipt, now = sys.argv[1:]
+print(json.dumps({'jobs': [{'id': job, 'device_id': device, 'plate': '皖A00001',
+  'receipt_no': receipt, 'local_date': '2999-12-31',
+  'total_cost': 100, 'total_charge': 200,
+  'created_at': int(now), 'updated_at': int(now),
+  'items': [{'id': job + '-item', 'spoken_name': '三元催化器', 'cost': 100, 'charge': 200}]}]}))
+PY
+)" >/dev/null
+
+# Second job, different id, same receipt number, batched with an unrelated good
+# job. The good job is the one that must not be lost.
+batch=$(python3 - "$DUP_B" "$GOOD" "$DUP_DEVICE" "$DUP_NO" "$NOW_MS" <<'PY'
+import json, sys
+dup, good, device, receipt, now = sys.argv[1:]
+print(json.dumps({'jobs': [
+    {'id': dup, 'device_id': device, 'plate': '皖A00002',
+     'receipt_no': receipt, 'local_date': '2999-12-31',
+     'total_cost': 100, 'total_charge': 200,
+     'created_at': int(now), 'updated_at': int(now), 'items': []},
+    {'id': good, 'device_id': device, 'plate': '皖A00003',
+     'receipt_no': 'GX29991231-002', 'local_date': '2999-12-31',
+     'total_cost': 300, 'total_charge': 400,
+     'created_at': int(now), 'updated_at': int(now),
+     'items': [{'id': good + '-item', 'spoken_name': '机油滤芯', 'cost': 300, 'charge': 400}]},
+]}))
+PY
+)
+
+if ! post "$batch" >/tmp/dup-batch-out.json 2>/tmp/dup-batch-err.txt; then
+  echo "FAIL a duplicate receipt number made the whole push fail"
+  cat /tmp/dup-batch-err.txt
+  exit 1
+fi
+
+dup_result=$(curl -fsS --max-time 20 "$BASE_URL/sync?device=$DUP_DEVICE&since=0" \
+  -H "Authorization: Bearer $SYNC_TOKEN")
+python3 - "$dup_result" "$GOOD" "$DUP_A" <<'PY'
+import json, sys
+body, good, dup_a = json.loads(sys.argv[1]), sys.argv[2], sys.argv[3]
+ids = {j['id'] for j in body['jobs']}
+assert good in ids, f"the unrelated job was lost to another job's conflict: {sorted(ids)}"
+assert dup_a in ids, f"the original job disappeared: {sorted(ids)}"
+print('PASS a duplicate receipt number does not poison the batch')
+PY

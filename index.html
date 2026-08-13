@@ -149,6 +149,12 @@ table.rp-items th{background:#f0f0f0}
     <div class="setting-row"><label>电话</label><input type="tel" id="setShopPhone" placeholder="联系电话" style="width:100%;text-align:left"></div>
   </div>
   <div class="settings-section">
+    <h3>☁️ 云端同步 (推荐)</h3>
+    <div class="setting-row"><label>地址</label><input type="url" id="setSyncUrl" placeholder="https://garage.20040114.xyz" style="width:100%;text-align:left"></div>
+    <div class="setting-row"><label>口令</label><input type="password" id="setSyncToken" style="width:100%;text-align:left"></div>
+    <button class="settings-btn green" onclick="syncNow()">☁️ 立即同步</button>
+  </div>
+  <div class="settings-section">
     <h3>☁️ 同步 (数据胶囊 WebDAV)</h3>
     <div class="setting-row"><label>地址</label><input type="url" id="setWebdavUrl" placeholder="https://..." style="width:100%;text-align:left"></div>
     <div class="setting-row"><label>用户名</label><input type="text" id="setWebdavUser" style="width:100%;text-align:left"></div>
@@ -211,6 +217,11 @@ function saveSettings() {
   // user re-typing it on a phone he cannot read, which means he would never back
   // up at all. Revisit once the Worker holds the credential instead.
   settings.webdavPass = document.getElementById("setWebdavPass").value;
+  settings.syncUrl = document.getElementById("setSyncUrl").value.trim();
+  // Same trade-off as the WebDAV password above: the sync token sits in
+  // localStorage because he cannot retype it, and it only grants access to his
+  // own ledger. Worth revisiting if the token ever gains wider scope.
+  settings.syncToken = document.getElementById("setSyncToken").value.trim();
   try { localStorage.setItem("garage_settings", JSON.stringify(settings)); } catch(e) {}
 }
 function syncSettingsForm() {
@@ -220,6 +231,8 @@ function syncSettingsForm() {
   document.getElementById("setWebdavUrl").value = settings.webdavUrl || "";
   document.getElementById("setWebdavUser").value = settings.webdavUser || "";
   document.getElementById("setWebdavPass").value = settings.webdavPass || "";
+  document.getElementById("setSyncUrl").value = settings.syncUrl || "";
+  document.getElementById("setSyncToken").value = settings.syncToken || "";
 }
 
 // Settings were previously never persisted — saveSettings() had no call site.
@@ -638,6 +651,12 @@ function acceptPrice() {
   saveRecords();
   flow.currentRecord = record;
   renderReceipt(record);
+  // Back it up in the background. He will never remember to press a button, and
+  // this must not delay the receipt or announce anything on failure — the record
+  // is already safe in localStorage either way.
+  if (typeof syncNow === "function") {
+    try { syncNow(true); } catch (e) {}
+  }
 }
 
 /**
@@ -1101,6 +1120,208 @@ function restoreFromWebdav() {
       speak("恢复失败了。");
     });
 }
+
+// ================= 云端同步 =================
+/**
+ * Sync to the Cloudflare Worker.
+ *
+ * Local storage stays the source of truth. The phone is offline for most of the
+ * working day, so sync is strictly a backup path: it must never block a record,
+ * never lose one, and never throw where he would see a broken screen. Failure
+ * is spoken, then ignored.
+ *
+ * The two sides disagree on representation, so the mapping is explicit:
+ *   money   yuan float  <->  integer fen   (never round-trip money as a float)
+ *   time    ISO string  <->  epoch ms
+ *   date    local day     kept verbatim, not derived from a timestamp
+ */
+function getDeviceId() {
+  var id = null;
+  try { id = localStorage.getItem("garage_device_id"); } catch (e) {}
+  if (!id) {
+    id = "dev_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem("garage_device_id", id); } catch (e) {}
+  }
+  return id;
+}
+
+// Money crosses the wire as integer fen. 12.6 * 100 is 1259.9999... in binary
+// floating point, so round rather than truncate.
+function toFen(yuan) {
+  var n = parseFloat(yuan);
+  if (isNaN(n)) return 0;
+  return Math.round(n * 100);
+}
+
+function fromFen(fen) {
+  var n = parseInt(fen, 10);
+  if (isNaN(n)) return 0;
+  return Math.round(n) / 100;
+}
+
+function recordToJob(r) {
+  var created = Date.parse(r.createdAt || "") || Date.now();
+  var items = (r.items || []).map(function(it, i) {
+    return {
+      id: r.id + "_i" + i,
+      spoken_name: it.part || "配件",   // verbatim; never rewritten
+      qty: 1,
+      cost: toFen(it.cost),
+      shipping: toFen(it.shipping),
+      charge: toFen(it.finalPrice),
+      seq: i
+    };
+  });
+  return {
+    id: r.id,
+    device_id: getDeviceId(),
+    plate: r.plate || null,
+    customer_id: null,           // free-text customer is not a schema FK yet
+    note: r.customer || null,
+    total_cost: toFen(r.totalCost),
+    total_charge: toFen(r.totalIncome),
+    settled: 1,
+    receipt_no: r.receiptNo || null,
+    local_date: r.date || null,
+    created_at: created,
+    updated_at: r.updatedAt || created,
+    deleted_at: null,
+    items: items
+  };
+}
+
+function jobToRecord(job, allItems) {
+  var mine = (allItems || []).filter(function(it) {
+    return String(it.job_id || job.id) === String(job.id);
+  }).sort(function(a, b) { return (a.seq || 0) - (b.seq || 0); });
+
+  var items = mine.map(function(it) {
+    var cost = fromFen(it.cost);
+    var shipping = fromFen(it.shipping);
+    return {
+      part: it.spoken_name || "配件",
+      cost: cost,
+      shipping: shipping,
+      totalCost: Math.round((cost + shipping) * 100) / 100,
+      finalPrice: fromFen(it.charge)
+    };
+  });
+  return {
+    id: job.id,
+    date: job.local_date || todayStr(new Date(job.created_at || Date.now())),
+    plate: job.plate || "",
+    customer: job.note || "",
+    items: items,
+    totalCost: fromFen(job.total_cost),
+    totalIncome: fromFen(job.total_charge),
+    createdAt: new Date(job.created_at || Date.now()).toISOString(),
+    updatedAt: job.updated_at || job.created_at || Date.now(),
+    receiptNo: job.receipt_no || ""
+  };
+}
+
+/** Last-write-wins on updated_at, mirroring the Worker's own guard. */
+function mergeRemote(jobs, items) {
+  var changed = false;
+  (jobs || []).forEach(function(job) {
+    if (!job || !job.id) return;
+    var idx = -1;
+    for (var i = 0; i < records.length; i++) {
+      if (records[i].id === job.id) { idx = i; break; }
+    }
+    var remoteAt = job.updated_at || job.created_at || 0;
+
+    if (job.deleted_at) {
+      // Deleted on another device.
+      if (idx >= 0) { records.splice(idx, 1); changed = true; }
+      return;
+    }
+    var incoming = jobToRecord(job, items);
+    if (idx < 0) {
+      records.push(incoming);
+      changed = true;
+    } else {
+      var localAt = records[idx].updatedAt || Date.parse(records[idx].createdAt || "") || 0;
+      if (remoteAt > localAt) { records[idx] = incoming; changed = true; }
+    }
+  });
+  if (changed) saveRecords();
+  return changed;
+}
+
+function syncConfig() {
+  var url = (settings.syncUrl || "").trim().replace(/\/+$/, "");
+  var token = (settings.syncToken || "").trim();
+  if (!url || !token) return null;
+  return { url: url, token: token };
+}
+
+/**
+ * Push local jobs, then pull anything newer. Safe to call at any time.
+ * Resolves even on failure — the caller must never need a try/catch.
+ */
+function syncNow(quiet) {
+  var cfg = syncConfig();
+  if (!cfg) return Promise.resolve({ ok: false, reason: "not configured" });
+
+  // Queue behind any sync already in flight rather than dropping this one. The
+  // auto-sync fires the moment a job is saved, so a tap on 立即同步 lands right
+  // on top of it — dropping that request would silently leave his newest job
+  // unsent, which is the exact failure this feature exists to prevent.
+  var prev = syncNow._chain || Promise.resolve();
+  var run = prev.then(function() { return syncOnce(cfg, quiet); },
+                      function() { return syncOnce(cfg, quiet); });
+  syncNow._chain = run.then(function() {}, function() {});
+  return run;
+}
+
+function syncOnce(cfg, quiet) {
+  if (!quiet) { toast("☁️ 正在同步..."); speak("正在同步。"); }
+
+  var headers = { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.token };
+  var jobs = records.map(recordToJob);
+  var since = 0;
+  try { since = parseInt(localStorage.getItem("garage_sync_since") || "0", 10) || 0; } catch (e) {}
+
+  return fetch(cfg.url + "/sync", {
+    method: "POST", headers: headers, body: JSON.stringify({ jobs: jobs })
+  }).then(function(res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return fetch(cfg.url + "/sync?device=" + encodeURIComponent(getDeviceId()) + "&since=" + since, {
+      headers: headers
+    });
+  }).then(function(res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }).then(function(data) {
+    var pulled = mergeRemote(data.jobs || [], data.items || []);
+    if (data.ts) {
+      try { localStorage.setItem("garage_sync_since", String(data.ts)); } catch (e) {}
+    }
+    if (!quiet) {
+      toast("✅ 同步好了 (" + records.length + " 条)");
+      speak("同步好了, 一共" + records.length + "条账目。");
+    }
+    renderHome();
+    return { ok: true, pulled: pulled };
+  }).catch(function(err) {
+    // Offline is the normal case in the workshop, not an error state.
+    if (!quiet) {
+      toast("⚠️ 同步失败, 账目还在手机里");
+      speak("同步失败了, 不要紧, 账目还在手机里, 有网了再同步。");
+    }
+    return { ok: false, reason: err.message };
+  });
+}
+
+// Exposed for tests, which drive these directly.
+window.getDeviceId = getDeviceId;
+window.toFen = toFen;
+window.fromFen = fromFen;
+window.recordToJob = recordToJob;
+window.jobToRecord = jobToRecord;
+window.mergeRemote = mergeRemote;
+window.syncNow = syncNow;
 
 // ================= 启动 =================
 if (window.speechSynthesis) {

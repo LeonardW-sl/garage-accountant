@@ -100,6 +100,48 @@ export interface ParsedItem {
 
 const NUM_TOKEN = '(\\d+(?:\\.\\d+)?|[零一二两三四五六七八九十百千万]+)';
 
+/** Measure words. In "火花塞 4 个" the 4 is a count, not money. */
+const COUNT_UNITS = '个只条套副根张瓶桶升斤包片台盒';
+
+/**
+ * Finds the amount in a fragment that has no cost/charge keyword.
+ *
+ * Arabic digits are unambiguous — he types them only for money. A Chinese
+ * numeral is accepted only when it stands alone as a token, because part names
+ * routinely start with one (三元催化器, 四轮定位, 二保焊丝, 三滤) and reading
+ * that as the price silently corrupts the amount.
+ */
+function findAmount(s: string): { value: number; index: number; length: number } | null {
+  let best: { value: number; index: number; length: number } | null = null;
+
+  const digitRe = /\d+(?:\.\d+)?/g;
+  let m: RegExpExecArray | null;
+  while ((m = digitRe.exec(s)) !== null) {
+    const v = parseFloat(m[0]);
+    if (!Number.isNaN(v) && (best === null || v > best.value)) {
+      best = { value: v, index: m.index, length: m[0].length };
+    }
+  }
+  if (best) return best;
+
+  const cnRe = /[零一二两三四五六七八九十百千万]+/g;
+  while ((m = cnRe.exec(s)) !== null) {
+    const before = m.index > 0 ? s[m.index - 1] : ' ';
+    const afterIdx = m.index + m[0].length;
+    const after = afterIdx < s.length ? s[afterIdx] : ' ';
+    // 块/元/钱 mark money; a measure word marks a count.
+    const isMoneyEdge = after === ' ' || '元块钱'.includes(after);
+    if (before !== ' ' || !isMoneyEdge) continue;
+    if (COUNT_UNITS.includes(after)) continue;
+    const v = cnToNumber(m[0]);
+    if (v === null) continue;
+    if (best === null || v > best.value) {
+      best = { value: v, index: m.index, length: m[0].length };
+    }
+  }
+  return best;
+}
+
 /**
  * Parses one spoken line into an item.
  *
@@ -139,17 +181,24 @@ export function parseItem(raw: string): ParsedItem | null {
   }
 
   // Two bare numbers with no keyword: mechanics say cost first, then price.
+  // Only Arabic digits are trusted in this shape — a Chinese numeral in the
+  // name would otherwise pair up with the real price ("三元催化器 800" read as
+  // cost 3, charge 800).
   if (cost === null && charge === null) {
-    const bare = rest.match(new RegExp(`${NUM_TOKEN}\\D+${NUM_TOKEN}`));
+    const bare = rest.match(/(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)/);
     if (bare) {
       cost = toFen(bare[1]);
       charge = toFen(bare[2]);
       rest = rest.replace(bare[0], ' ');
     } else {
-      const one = rest.match(new RegExp(NUM_TOKEN));
+      const one = findAmount(rest);
       if (one) {
-        charge = toFen(one[1]);
-        rest = rest.replace(one[0], ' ');
+        charge = toFen(String(one.value));
+        // Swallow a currency word glued to the amount so it does not end up in
+        // the name ("皮带 十五块" → "皮带块").
+        let end = one.index + one.length;
+        while (end < rest.length && '元块钱'.includes(rest[end])) end++;
+        rest = rest.slice(0, one.index) + ' ' + rest.slice(end);
       }
     }
   }

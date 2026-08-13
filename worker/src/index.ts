@@ -114,6 +114,10 @@ interface JobPayload {
   total_cost?: number;
   total_charge?: number;
   settled?: number;
+  /** Printed on the customer's copy; must survive a round trip verbatim. */
+  receipt_no?: string | null;
+  /** Local calendar day (YYYY-MM-DD), not derivable from created_at. */
+  local_date?: string | null;
   created_at: number;
   updated_at: number;
   deleted_at?: number | null;
@@ -141,26 +145,30 @@ async function handleSync(request: Request, env: Env, h: Record<string, string>)
     return json({ error: 'invalid batch' }, { status: 400 }, h);
   }
 
-  const stmts: D1PreparedStatement[] = [];
+  const perJob: Array<{ id: string; stmts: D1PreparedStatement[] }> = [];
   for (const j of jobs) {
     if (!j.id || !j.device_id || !j.created_at) continue;
     const version = j.updated_at ?? j.created_at;
+    const stmts: D1PreparedStatement[] = [];
     stmts.push(
       env.DB.prepare(
         `INSERT INTO jobs (id, device_id, plate, plate_photo, customer_id, note,
-                           total_cost, total_charge, settled, created_at, updated_at, deleted_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                           total_cost, total_charge, settled, receipt_no, local_date,
+                           created_at, updated_at, deleted_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(id) DO UPDATE SET
            plate=excluded.plate, plate_photo=excluded.plate_photo,
            customer_id=excluded.customer_id, note=excluded.note,
            total_cost=excluded.total_cost, total_charge=excluded.total_charge,
-           settled=excluded.settled, updated_at=excluded.updated_at,
+           settled=excluded.settled, receipt_no=excluded.receipt_no,
+           local_date=excluded.local_date, updated_at=excluded.updated_at,
            deleted_at=excluded.deleted_at
          WHERE excluded.updated_at >= jobs.updated_at`,
       ).bind(
         j.id, j.device_id, j.plate ?? null, j.plate_photo ?? null,
         j.customer_id ?? null, j.note ?? null,
         j.total_cost ?? 0, j.total_charge ?? 0, j.settled ?? 0,
+        j.receipt_no ?? null, j.local_date ?? null,
         j.created_at, version, j.deleted_at ?? null,
       ),
     );
@@ -188,11 +196,29 @@ async function handleSync(request: Request, env: Env, h: Record<string, string>)
         );
       }
     }
+    perJob.push({ id: j.id, stmts: stmts });
   }
 
-  if (!stmts.length) return json({ ok: true, written: 0 }, { status: 200 }, h);
-  await env.DB.batch(stmts);
-  return json({ ok: true, written: jobs.length, ts: Date.now() }, { status: 200 }, h);
+  if (!perJob.length) return json({ ok: true, written: 0 }, { status: 200 }, h);
+
+  // One batch per job rather than one for everything. D1 runs a batch as a
+  // single transaction, so a constraint conflict on one job (a receipt number
+  // reused after a restore, say) would otherwise reject every other job in the
+  // push — one bad row silently blocking the whole ledger from syncing, which
+  // is the failure this endpoint exists to prevent.
+  let written = 0;
+  const skipped: Array<{ id: string; reason: string }> = [];
+  for (const { id, stmts } of perJob) {
+    try {
+      await env.DB.batch(stmts);
+      written++;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.error(JSON.stringify({ msg: 'job rejected', id, reason }));
+      skipped.push({ id, reason });
+    }
+  }
+  return json({ ok: true, written, skipped, ts: Date.now() }, { status: 200 }, h);
 }
 
 async function handlePull(

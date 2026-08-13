@@ -26,6 +26,17 @@ def test_schema_matches_product_contract() -> None:
     assert "last_cost" not in part_cols
     assert "last_charge" not in part_cols
 
+    job_cols = columns(db, "jobs")
+    # receipt_no identifies the document handed to the customer; local_date is
+    # the device's own calendar day. Neither can be reconstructed from
+    # created_at alone, so a round trip that drops them loses ledger meaning.
+    assert "receipt_no" in job_cols
+    assert "local_date" in job_cols
+
+    # Two jobs on one device must never share a receipt number.
+    indexes = {row[1] for row in db.execute("PRAGMA index_list(jobs)")}
+    assert "idx_jobs_receipt" in indexes, f"missing unique receipt index: {indexes}"
+
 
 if __name__ == "__main__":
     test_schema_matches_product_contract()

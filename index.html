@@ -4,832 +4,1397 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="theme-color" content="#e65100">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <title>汽修记账助手</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#1a1a2e;--card:#16213e;--card2:#0f3460;--accent:#e65100;--accent2:#ff8f00;--text:#fff;--text2:#aab;--success:#2e7d32;--danger:#c62828;--radius:12px;--shadow:0 2px 12px rgba(0,0,0,.3)}
+:root{--bg:#1a1a2e;--card:#16213e;--card2:#0f3460;--accent:#e65100;--accent2:#ff8f00;--text:#fff;--text2:#aab;--green:#2e7d32;--green2:#43a047;--red:#c62828;--radius:16px}
 html,body{height:100%;overflow:hidden}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:18px;line-height:1.5;display:flex;flex-direction:column}
-header{background:var(--accent);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10;position:sticky;top:0}
-header h1{font-size:22px;font-weight:700;letter-spacing:1px}
-header button{background:none;border:none;color:#fff;font-size:24px;padding:8px;cursor:pointer;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
-header button:active{background:rgba(255,255,255,.2)}
-.view{display:none;flex-direction:column;flex:1;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:20px;line-height:1.5;display:flex;flex-direction:column}
+header{background:var(--accent);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10}
+header h1{font-size:20px;font-weight:700}
+header button{background:none;border:none;color:#fff;font-size:24px;padding:8px;cursor:pointer;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center}
+.view{display:none;flex-direction:column;flex:1;overflow:hidden;padding:16px}
 .view.active{display:flex}
-#mainView{padding:12px;gap:8px;overflow-y:auto}
-.list-header{display:flex;justify-content:space-between;align-items:center;padding:4px 0 8px;color:var(--text2);font-size:14px;flex-shrink:0}
-.record-card{background:var(--card);border-radius:var(--radius);padding:16px;cursor:pointer;box-shadow:var(--shadow);border-left:4px solid var(--accent);transition:background .15s;user-select:none}
-.record-card:active{background:var(--card2)}
-.record-card .rc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.record-card .rc-plate{font-size:20px;font-weight:700;color:var(--accent2)}
-.record-card .rc-date{font-size:14px;color:var(--text2)}
-.record-card .rc-bottom{display:flex;justify-content:space-between;font-size:16px}
-.record-card .rc-cost{color:var(--text2)}
-.record-card .rc-price{color:#4caf50;font-weight:700}
-.empty-state{text-align:center;padding:60px 20px;color:var(--text2);font-size:20px;line-height:2}
-.empty-state .big-icon{font-size:64px;margin-bottom:16px;display:block}
-.fab{position:fixed;bottom:24px;right:24px;width:64px;height:64px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:36px;box-shadow:0 4px 20px rgba(230,81,0,.5);cursor:pointer;z-index:20;display:flex;align-items:center;justify-content:center;transition:transform .15s}
-.fab:active{transform:scale(.92)}
-#addView{padding:12px;overflow-y:auto}
-#addView .form-section{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
-.form-section h3{font-size:16px;color:var(--accent2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)}
-.form-group{margin-bottom:14px}
-.form-group:last-child{margin-bottom:0}
-.form-group label{display:flex;align-items:center;font-size:15px;color:var(--text2);margin-bottom:4px;gap:6px}
-.form-group .input-row{display:flex;gap:8px;align-items:center}
-.form-group input,.form-group select{flex:1;background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:12px 14px;border-radius:8px;font-size:18px;outline:none;width:100%}
-.form-group input:focus{border-color:var(--accent)}
-.form-group input[type=number]{-moz-appearance:textfield}
-.form-group input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
-.mic-btn{background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--accent2);width:48px;height:48px;border-radius:8px;font-size:22px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.mic-btn:active{background:var(--accent);color:#fff}
-.mic-btn.listening{background:var(--accent);color:#fff;animation:pulse .8s infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-.speak-btn{background:none;border:none;color:var(--accent2);font-size:18px;cursor:pointer;padding:4px 8px;flex-shrink:0}
-.speak-btn:active{color:var(--accent)}
-.item-card{background:var(--card2);border-radius:8px;padding:12px;margin-bottom:8px;position:relative}
-.item-card .item-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
-.item-card .item-row:last-child{margin-bottom:0}
-.item-card .item-label{font-size:13px;color:var(--text2);min-width:50px;flex-shrink:0}
-.item-card .item-val{flex:1;font-size:16px}
-.item-card .item-val.price{color:#4caf50;font-weight:700}
-.item-card .item-val.cost{color:var(--text2)}
-.item-card .del-item{background:var(--danger);color:#fff;border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;position:absolute;top:-8px;right:-8px;display:flex;align-items:center;justify-content:center}
-.add-item-btn{background:var(--card2);border:1px dashed var(--accent2);color:var(--accent2);padding:12px;border-radius:8px;font-size:16px;cursor:pointer;width:100%;margin-top:8px}
-.add-item-btn:active{background:var(--accent);color:#fff}
-.form-actions{display:flex;gap:12px;margin-top:4px;padding:4px 0 20px}
-.form-actions button{flex:1;padding:14px;border:none;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer}
-.form-actions .btn-save{background:var(--accent);color:#fff}
-.form-actions .btn-cancel{background:var(--card2);color:var(--text2)}
-.form-actions .btn-save:active,.form-actions .btn-cancel:active{opacity:.8}
-#detailView{padding:12px;overflow-y:auto}
-.detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.detail-header h2{font-size:20px;color:var(--accent2)}
-.detail-header button{background:var(--card2);border:none;color:var(--text);padding:8px 16px;border-radius:8px;font-size:16px;cursor:pointer}
-.detail-summary{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
-.detail-summary .ds-row{display:flex;justify-content:space-between;padding:8px 0;font-size:18px;border-bottom:1px solid rgba(255,255,255,.05)}
-.detail-summary .ds-row:last-child{border-bottom:none}
-.detail-summary .ds-label{color:var(--text2)}
-.detail-summary .ds-value{font-weight:700}
-.detail-summary .ds-value.green{color:#4caf50}
-.detail-summary .ds-value.red{color:#ef5350}
-.detail-items{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
-.detail-item{padding:12px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;border-radius:8px;transition:background .15s}
-.detail-item:active{background:var(--card2)}
-.detail-item:last-child{border-bottom:none}
-.detail-item .di-name{font-size:18px;font-weight:700;color:var(--accent2);margin-bottom:4px}
-.detail-item .di-details{font-size:15px;color:var(--text2);display:flex;flex-wrap:wrap;gap:12px}
-.detail-item .di-details span{white-space:nowrap}
-.detail-item .di-price{color:#4caf50;font-weight:700}
-.detail-actions{display:flex;gap:12px;margin-top:16px;padding-bottom:20px}
-.detail-actions button{flex:1;padding:14px;border:none;border-radius:8px;font-size:16px;cursor:pointer}
-.detail-actions .btn-delete{background:var(--danger);color:#fff}
-.detail-actions .btn-back{background:var(--card2);color:var(--text)}
-#settingsView{padding:12px;overflow-y:auto}
-.settings-section{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
-.settings-section h3{font-size:16px;color:var(--accent2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)}
-.setting-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-.setting-row:last-child{border-bottom:none}
-.setting-row label{font-size:15px;color:var(--text2)}
-.setting-row input{background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 12px;border-radius:6px;font-size:16px;width:100px;text-align:center}
-.settings-btn{background:var(--card2);border:1px solid var(--accent2);color:var(--accent2);padding:12px;border-radius:8px;font-size:16px;cursor:pointer;width:100%;margin-top:8px}
-.settings-btn:active{background:var(--accent);color:#fff}
-.settings-btn.danger{border-color:var(--danger);color:var(--danger)}
-.settings-btn.danger:active{background:var(--danger);color:#fff}
-.settings-btn.success{border-color:var(--success);color:var(--success)}
-.settings-btn.success:active{background:var(--success);color:#fff}
-#voiceOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px}
-#voiceOverlay.active{display:flex}
-.vo-box{background:var(--card);border-radius:var(--radius);padding:40px;text-align:center;max-width:360px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.5)}
-.vo-mic{font-size:64px;margin-bottom:16px;display:block}
-.vo-mic.listening{animation:bounce 1s infinite}
-@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-.vo-status{font-size:20px;color:var(--text2);margin-bottom:8px}
-.vo-result{font-size:26px;color:var(--accent2);font-weight:700;margin-bottom:24px;min-height:40px;padding:8px;background:var(--card2);border-radius:8px}
-.vo-buttons{display:flex;gap:12px}
-.vo-buttons button{flex:1;padding:12px;border:none;border-radius:8px;font-size:18px;cursor:pointer}
-.vo-confirm{background:var(--accent);color:#fff}
-.vo-cancel{background:var(--card2);color:var(--text2)}
-.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--text);padding:12px 24px;border-radius:8px;font-size:16px;box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:200;border-left:4px solid var(--accent);opacity:0;transition:opacity .3s;pointer-events:none}
+/* ===== 首页 ===== */
+#homeView{justify-content:space-between;align-items:center}
+.hero-icon{font-size:80px;margin-bottom:20px;text-align:center}
+.big-start-btn{width:100%;padding:36px 20px;font-size:32px;font-weight:700;background:var(--accent);border:none;border-radius:24px;color:#fff;cursor:pointer;box-shadow:0 8px 32px rgba(230,81,0,.4);transition:transform .15s;display:flex;flex-direction:column;align-items:center;gap:8px}
+.big-start-btn:active{transform:scale(.96)}
+.big-start-btn .sub{font-size:16px;font-weight:400;opacity:.8}
+.home-stats{width:100%;background:var(--card);border-radius:var(--radius);padding:16px;margin-top:16px}
+.home-stats .hs-row{display:flex;justify-content:space-between;padding:6px 0;font-size:18px}
+.home-stats .hs-label{color:var(--text2)}
+.home-stats .hs-val{font-weight:700;color:var(--accent2)}
+/* ===== 向导屏 ===== */
+.guide{justify-content:center;gap:20px}
+.guide-question{text-align:center;font-size:28px;font-weight:700;line-height:1.6;margin-bottom:8px}
+.guide-hint{text-align:center;font-size:18px;color:var(--text2);margin-bottom:16px}
+.big-input-wrap{width:100%;position:relative}
+.big-input{width:100%;background:var(--card2);border:3px solid var(--accent);color:var(--text);padding:24px;border-radius:16px;font-size:28px;text-align:center;outline:none;min-height:90px}
+.big-input:focus{border-color:var(--accent2)}
+.big-btn{width:100%;padding:24px;border:none;border-radius:16px;font-size:24px;font-weight:700;cursor:pointer;color:#fff}
+.big-btn.green{background:var(--green2)}
+.big-btn.red{background:var(--red)}
+.big-btn.orange{background:var(--accent)}
+.big-btn:active{opacity:.8}
+.btn-row{display:flex;gap:12px;width:100%}
+.btn-row .big-btn{flex:1}
+.part-box{width:100%;background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.part-box .pb-title{font-size:20px;font-weight:700;color:var(--accent2);margin-bottom:8px}
+.part-box .pb-row{display:flex;justify-content:space-between;font-size:18px;padding:4px 0}
+.part-box .pb-row .l{color:var(--text2)}
+.part-box .pb-row .v{font-weight:700}
+/* ===== 收据 ===== */
+#receiptView{background:#eee;padding:0;overflow-y:auto}
+.receipt-page{background:#fff;color:#000;width:100%;min-height:100%;padding:24px 20px;font-family:"KaiTi","STKaiti","SimSun",serif}
+.rp-title{text-align:center;font-size:26px;font-weight:700;letter-spacing:4px;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:10px}
+.rp-shop{text-align:center;font-size:18px;margin-bottom:4px}
+.rp-meta{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}
+.rp-contact{text-align:center;font-size:14px;margin-bottom:10px;border-bottom:1px solid #000;padding-bottom:8px}
+table.rp-items{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
+table.rp-items th,table.rp-items td{border:1px solid #000;padding:6px 4px;text-align:center}
+table.rp-items th{background:#f0f0f0}
+.rp-total{display:flex;justify-content:space-between;font-size:17px;padding:6px 0;border-bottom:1px solid #000}
+.rp-total .big{font-size:22px;font-weight:700}
+.rp-note{margin-top:10px;font-size:14px;border:1px solid #000;padding:8px;min-height:40px}
+.rp-sign{display:flex;justify-content:space-between;font-size:15px;margin-top:24px}
+.rp-foot{text-align:center;font-size:12px;color:#666;margin-top:16px}
+.receipt-actions{position:sticky;bottom:0;background:var(--bg);padding:12px;display:flex;gap:12px}
+.receipt-actions .big-btn{font-size:20px;padding:16px}
+/* ===== 设置 ===== */
+#settingsView{overflow-y:auto}
+.settings-section{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.settings-section h3{font-size:18px;color:var(--accent2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:17px}
+.setting-row label{color:var(--text2)}
+.setting-row input{background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 12px;border-radius:8px;font-size:16px;width:180px;text-align:right}
+.setting-row input.full{width:100%;text-align:left}
+.settings-btn{width:100%;padding:16px;border:none;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer;margin-top:10px;color:#fff}
+.settings-btn.orange{background:var(--accent)}
+.settings-btn.green{background:var(--green2)}
+.settings-btn.red{background:var(--red)}
+/* ===== 历史列表 ===== */
+#historyView{overflow-y:auto}
+.hist-card{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:10px;border-left:4px solid var(--accent)}
+.hist-card .hc-top{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-bottom:6px}
+.hist-card .hc-plate{color:var(--accent2)}
+.hist-card .hc-sum{display:flex;justify-content:space-between;font-size:15px;color:var(--text2)}
+.toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--text);padding:14px 24px;border-radius:12px;font-size:17px;box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:300;border-left:4px solid var(--accent);opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--card2);border-radius:2px}
-@media(min-width:480px){body{max-width:480px;margin:0 auto;border-left:1px solid rgba(255,255,255,.05);border-right:1px solid rgba(255,255,255,.05)}}
+.speak-indicator{position:fixed;top:60px;right:12px;background:var(--accent2);color:#000;padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;display:none;z-index:200}
+.speak-indicator.on{display:block;animation:pulse .6s infinite}
+/* Stays visible: it is the standing sign that nothing is being read aloud. */
+.speak-indicator.mute{display:block;background:#c62828;color:#fff;animation:none}
+.speak-indicator.mute::after{content:" 🔇"}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 </style>
 </head>
 <body>
 <header>
   <h1 id="headerTitle">🔧 汽修记账</h1>
-  <button id="settingsBtn" onclick="showView('settingsView')" aria-label="设置">⚙️</button>
+  <button onclick="showView('homeView')" aria-label="主页">🏠</button>
 </header>
 
-<div id="mainView" class="view active">
-  <div class="list-header">
-    <span>📋 最近记录</span>
-    <span id="recordCount">0 条</span>
-  </div>
-  <div id="recordList"></div>
-  <button class="fab" onclick="startNewRecord()" aria-label="新增记录">+</button>
-</div>
+<span class="speak-indicator" id="speakIndicator">🔊 播报中</span>
 
-<div id="addView" class="view">
-  <div class="form-section">
-    <h3>📋 基本信息</h3>
-    <div class="form-group">
-      <label>📅 日期</label>
-      <input type="date" id="recDate">
-    </div>
-    <div class="form-group">
-      <label>🚗 车牌号</label>
-      <div class="input-row">
-        <input type="text" id="recPlate" placeholder="例如: 粤B12345" inputmode="text">
-        <button class="mic-btn" onclick="startVoice('recPlate')" aria-label="语音输入车牌">🎤</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>👤 客户名</label>
-      <div class="input-row">
-        <input type="text" id="recCustomer" placeholder="非必填" inputmode="text">
-        <button class="mic-btn" onclick="startVoice('recCustomer')" aria-label="语音输入客户名">🎤</button>
-      </div>
-    </div>
+<!-- 首页 -->
+<div id="homeView" class="view active">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center">
+    <span class="hero-icon">🔧</span>
+    <button class="big-start-btn" onclick="startFlow()">
+      📷 开始记账
+      <span class="sub">拍照或说话, 不用写字</span>
+    </button>
   </div>
-  <div class="form-section">
-    <h3>🔧 配件/项目 <span id="itemCount" style="font-size:14px;color:var(--text2);font-weight:400">(0 项)</span></h3>
-    <div id="itemsContainer"></div>
-    <button class="add-item-btn" onclick="addItem()">+ 添加配件/项目</button>
+  <div class="home-stats">
+    <div class="hs-row"><span class="hs-label">📅 今天</span><span class="hs-val" id="todayCount">0 单</span></div>
+    <div class="hs-row"><span class="hs-label">💰 今天实收</span><span class="hs-val" id="todayIncome">¥0</span></div>
+    <div class="hs-row"><span class="hs-label">📈 今天利润</span><span class="hs-val" id="todayProfit">¥0</span></div>
   </div>
-  <div class="form-section">
-    <h3>💰 本单汇总</h3>
-    <div class="form-group">
-      <label>总成本</label>
-      <div style="font-size:24px;font-weight:700;color:var(--text2)" id="totalCostDisplay">¥0</div>
-    </div>
-    <div class="form-group">
-      <label>总收入</label>
-      <div style="font-size:24px;font-weight:700;color:#4caf50" id="totalIncomeDisplay">¥0</div>
-    </div>
-    <div class="form-group">
-      <label>利润</label>
-      <div style="font-size:24px;font-weight:700;color:#ff8f00" id="totalProfitDisplay">¥0</div>
-    </div>
-  </div>
-  <div class="form-actions">
-    <button class="btn-cancel" onclick="cancelAdd()">取消</button>
-    <button class="btn-save" onclick="saveRecord()">💾 保存</button>
+  <div style="display:flex;gap:12px;margin-top:16px">
+    <button class="big-btn orange" style="font-size:18px;padding:16px 8px;white-space:nowrap" onclick="showView('historyView')">📋 历史账目</button>
+    <button class="big-btn orange" style="font-size:18px;padding:16px 8px;white-space:nowrap" onclick="showView('settingsView')">⚙️ 设置</button>
   </div>
 </div>
 
-<div id="detailView" class="view">
-  <div class="detail-header">
-    <h2 id="detailTitle">记录详情</h2>
-    <button onclick="showView('mainView')">← 返回</button>
+<!-- 向导 -->
+<div id="guideView" class="view guide">
+  <div style="width:100%">
+    <div class="guide-question" id="guideQuestion"></div>
+    <div class="guide-hint" id="guideHint"></div>
   </div>
-  <div class="detail-summary" id="detailSummary"></div>
-  <h3 style="font-size:16px;color:var(--accent2);margin-bottom:8px;padding:0 4px">📋 项目明细（点击可朗读）</h3>
-  <div class="detail-items" id="detailItems"></div>
-  <div class="detail-actions">
-    <button class="btn-back" onclick="showView('mainView')">← 返回列表</button>
-    <button class="btn-delete" onclick="deleteCurrentRecord()">🗑️ 删除</button>
+  <div id="guideBody" style="width:100%"></div>
+  <div class="btn-row" id="guideActions"></div>
+</div>
+
+<!-- 收据 -->
+<div id="receiptView" class="view">
+  <div class="receipt-page" id="receiptPage"></div>
+  <div class="receipt-actions">
+    <button class="big-btn orange" onclick="saveReceiptImage()">📷 保存图片</button>
+    <button class="big-btn green" onclick="finishRecord()">✅ 完成</button>
   </div>
 </div>
 
+<!-- 历史 -->
+<div id="historyView" class="view">
+  <div id="historyList"></div>
+</div>
+
+<!-- 设置 -->
 <div id="settingsView" class="view">
   <div class="settings-section">
-    <h3>💰 定价规则</h3>
-    <div class="setting-row">
-      <label>加价倍率</label>
-      <input type="number" id="setMarkup" value="2" min="1" max="10" step="0.1">
-    </div>
-    <div class="setting-row">
-      <label>基础费（元）</label>
-      <input type="number" id="setBaseFee" value="0" min="0" step="1">
-    </div>
-    <div class="setting-row">
-      <label>取整到（元）</label>
-      <input type="number" id="setRounding" value="1" min="1" step="1">
-    </div>
-    <div style="padding:8px 0;font-size:14px;color:var(--text2)">
-      推荐价 = 向上取整(成本 × 倍率, 取整) + 基础费
-    </div>
+    <h3>🏪 店铺信息 (显示在收据上)</h3>
+    <div class="setting-row"><label>店名</label><input type="text" id="setShopName" placeholder="如: 老王汽修" style="width:100%;text-align:left"></div>
+    <div class="setting-row"><label>地址</label><input type="text" id="setShopAddr" placeholder="店铺地址" style="width:100%;text-align:left"></div>
+    <div class="setting-row"><label>电话</label><input type="tel" id="setShopPhone" placeholder="联系电话" style="width:100%;text-align:left"></div>
   </div>
   <div class="settings-section">
-    <h3>☁️ 数据同步（数据胶囊 WebDAV）</h3>
-    <div class="form-group">
-      <label>WebDAV 地址</label>
-      <input type="url" id="setWebdavUrl" placeholder="https://dav.jianguo.com/..." style="width:100%;background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:12px 14px;border-radius:8px;font-size:16px;outline:none">
-    </div>
-    <div class="form-group">
-      <label>用户名</label>
-      <input type="text" id="setWebdavUser" placeholder="WebDAV 用户名" style="width:100%;background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:12px 14px;border-radius:8px;font-size:16px;outline:none">
-    </div>
-    <div class="form-group">
-      <label>密码</label>
-      <input type="password" id="setWebdavPass" placeholder="WebDAV 密码" style="width:100%;background:var(--card2);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:12px 14px;border-radius:8px;font-size:16px;outline:none">
-    </div>
-    <button class="settings-btn success" onclick="backupToWebdav()">☁️ 备份到数据胶囊</button>
-    <button class="settings-btn" onclick="restoreFromWebdav()" style="margin-top:8px">📥 从数据胶囊恢复</button>
-    <div style="margin-top:12px;font-size:14px;color:var(--text2);background:var(--card2);padding:10px;border-radius:8px">
-      ⚡ 提示：数据保存在手机本地，备份是手动操作。建议每次修完车后点一次备份。
-    </div>
+    <h3>☁️ 云端同步 (推荐)</h3>
+    <div class="setting-row"><label>地址</label><input type="url" id="setSyncUrl" placeholder="https://garage.20040114.xyz" style="width:100%;text-align:left"></div>
+    <div class="setting-row"><label>口令</label><input type="password" id="setSyncToken" style="width:100%;text-align:left"></div>
+    <button class="settings-btn green" onclick="syncNow()">☁️ 立即同步</button>
   </div>
   <div class="settings-section">
-    <h3>📊 数据管理</h3>
-    <button class="settings-btn" onclick="exportData()">📤 导出数据（JSON）</button>
-    <button class="settings-btn danger" onclick="clearAllData()" style="margin-top:8px">🗑️ 清空所有数据</button>
+    <h3>☁️ 同步 (数据胶囊 WebDAV)</h3>
+    <div class="setting-row"><label>地址</label><input type="url" id="setWebdavUrl" placeholder="https://..." style="width:100%;text-align:left"></div>
+    <div class="setting-row"><label>用户名</label><input type="text" id="setWebdavUser" style="width:100%;text-align:left"></div>
+    <div class="setting-row"><label>密码</label><input type="password" id="setWebdavPass" style="width:100%;text-align:left"></div>
+    <button class="settings-btn green" onclick="backupToWebdav()">☁️ 备份到数据胶囊</button>
+    <button class="settings-btn orange" onclick="restoreFromWebdav()" style="margin-top:8px">📥 从数据胶囊恢复</button>
   </div>
   <div class="settings-section">
-    <h3>ℹ️ 关于</h3>
-    <div style="font-size:15px;color:var(--text2);line-height:2">
-      <div>汽修记账助手 v0.1</div>
-      <div>数据存储：手机本地 (localStorage)</div>
-      <div>云端同步：数据胶囊 WebDAV</div>
-      <div>语音识别：浏览器原生 Web Speech API</div>
-    </div>
-    <button class="settings-btn" onclick="showView('mainView')" style="margin-top:12px">← 返回主页</button>
+    <h3>📊 数据</h3>
+    <button class="settings-btn orange" onclick="exportData()">📤 导出 JSON</button>
+    <button class="settings-btn red" onclick="clearAllData()" style="margin-top:8px">🗑️ 清空所有数据</button>
   </div>
-</div>
-
-<div id="voiceOverlay">
-  <div class="vo-box">
-    <span class="vo-mic" id="voMicIcon">🎤</span>
-    <div class="vo-status" id="voStatus">正在聆听，请说话...</div>
-    <div class="vo-result" id="voResult"></div>
-    <div class="vo-buttons">
-      <button class="vo-cancel" onclick="cancelVoice()">取消</button>
-      <button class="vo-confirm" onclick="confirmVoice()">✓ 确认</button>
-    </div>
-  </div>
+  <button class="settings-btn orange" onclick="showView('homeView')" style="margin-top:4px">← 返回主页</button>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ============ State ============
+// ================= 状态 =================
 var records = [];
 var settings = {};
-var currentRecordId = null;
-var editingItems = [];
-var itemIdCounter = 0;
-var voiceTargetField = null;
-var voiceRecognition = null;
-var voiceResultText = "";
-var detailViewRecordId = null;
-var settingsChanged = false;
+var flow = null; // { step, plate, customer, items: [{part,cost,shipping,finalPrice}], pendingItem, tempInput }
+var voiceSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
-// ============ Init ============
+// ================= 初始化 =================
 function init() {
   loadSettings();
   loadRecords();
-  document.getElementById("recDate").value = new Date().toISOString().slice(0,10);
-  renderList();
+  renderHome();
+  // 首页自动播报
+  setTimeout(function() {
+    speak("师傅, 你好。按下面的开始记账按钮, 拍照或者说话, 不用写字。");
+  }, 800);
 }
 
-// ============ Data ============
+// ================= 数据层 (与 v1 兼容) =================
 function loadRecords() {
-  try {
-    var d = localStorage.getItem("garage_records");
-    records = d ? JSON.parse(d) : [];
-  } catch(e) { records = []; }
+  try { var d = localStorage.getItem("garage_records"); records = d ? JSON.parse(d) : []; }
+  catch(e) { records = []; }
 }
-
 function saveRecords() {
-  try {
-    localStorage.setItem("garage_records", JSON.stringify(records));
-  } catch(e) { toast("保存失败: " + e.message); }
+  try { localStorage.setItem("garage_records", JSON.stringify(records)); } catch(e) {}
 }
-
 function loadSettings() {
-  try {
-    var d = localStorage.getItem("garage_settings");
-    settings = d ? JSON.parse(d) : { markupRate: 2, baseFee: 0, rounding: 1 };
-  } catch(e) {
-    settings = { markupRate: 2, baseFee: 0, rounding: 1 };
-  }
-  document.getElementById("setMarkup").value = settings.markupRate || 2;
-  document.getElementById("setBaseFee").value = settings.baseFee || 0;
-  document.getElementById("setRounding").value = settings.rounding || 1;
-  try {
-    var wd = localStorage.getItem("garage_webdav");
-    if (wd) {
-      var w = JSON.parse(wd);
-      document.getElementById("setWebdavUrl").value = w.url || "";
-      document.getElementById("setWebdavUser").value = w.user || "";
-      document.getElementById("setWebdavPass").value = w.pass || "";
-    }
-  } catch(e) {}
+  try { var d = localStorage.getItem("garage_settings"); settings = d ? JSON.parse(d) : {}; }
+  catch(e) { settings = {}; }
+  if (!settings.shopName) settings.shopName = "";
+  if (!settings.shopAddr) settings.shopAddr = "";
+  if (!settings.shopPhone) settings.shopPhone = "";
+  syncSettingsForm();
 }
-
 function saveSettings() {
-  settings.markupRate = parseFloat(document.getElementById("setMarkup").value) || 2;
-  settings.baseFee = parseFloat(document.getElementById("setBaseFee").value) || 0;
-  settings.rounding = parseInt(document.getElementById("setRounding").value) || 1;
-  try {
-    localStorage.setItem("garage_settings", JSON.stringify(settings));
-  } catch(e) {}
-  try {
-    localStorage.setItem("garage_webdav", JSON.stringify({
-      url: document.getElementById("setWebdavUrl").value,
-      user: document.getElementById("setWebdavUser").value,
-      pass: document.getElementById("setWebdavPass").value
-    }));
-  } catch(e) {}
+  settings.shopName = document.getElementById("setShopName").value.trim();
+  settings.shopAddr = document.getElementById("setShopAddr").value.trim();
+  settings.shopPhone = document.getElementById("setShopPhone").value.trim();
+  settings.webdavUrl = document.getElementById("setWebdavUrl").value.trim();
+  settings.webdavUser = document.getElementById("setWebdavUser").value.trim();
+  // Storing the WebDAV password in localStorage is a known weak spot; any script
+  // that reaches this page can read it. Kept only because the alternative is the
+  // user re-typing it on a phone he cannot read, which means he would never back
+  // up at all. Revisit once the Worker holds the credential instead.
+  settings.webdavPass = document.getElementById("setWebdavPass").value;
+  settings.syncUrl = document.getElementById("setSyncUrl").value.trim();
+  // Same trade-off as the WebDAV password above: the sync token sits in
+  // localStorage because he cannot retype it, and it only grants access to his
+  // own ledger. Worth revisiting if the token ever gains wider scope.
+  settings.syncToken = document.getElementById("setSyncToken").value.trim();
+  try { localStorage.setItem("garage_settings", JSON.stringify(settings)); } catch(e) {}
+}
+function syncSettingsForm() {
+  document.getElementById("setShopName").value = settings.shopName || "";
+  document.getElementById("setShopAddr").value = settings.shopAddr || "";
+  document.getElementById("setShopPhone").value = settings.shopPhone || "";
+  document.getElementById("setWebdavUrl").value = settings.webdavUrl || "";
+  document.getElementById("setWebdavUser").value = settings.webdavUser || "";
+  document.getElementById("setWebdavPass").value = settings.webdavPass || "";
+  document.getElementById("setSyncUrl").value = settings.syncUrl || "";
+  document.getElementById("setSyncToken").value = settings.syncToken || "";
 }
 
-// ============ Views ============
+// Settings were previously never persisted — saveSettings() had no call site.
+document.addEventListener("input", function(e) {
+  if (e.target && typeof e.target.id === "string" && e.target.id.indexOf("set") === 0) saveSettings();
+});
+
+// ================= 视图切换 =================
 function showView(viewId) {
   var views = document.querySelectorAll(".view");
   for (var i = 0; i < views.length; i++) views[i].classList.remove("active");
   document.getElementById(viewId).classList.add("active");
-  if (viewId === "mainView") renderList();
-  if (viewId === "settingsView") loadSettings();
+  if (viewId === "homeView") renderHome();
+  if (viewId === "historyView") renderHistory();
+  if (viewId === "settingsView") syncSettingsForm();
 }
 
-// ============ List ============
-function renderList() {
-  var container = document.getElementById("recordList");
-  var count = document.getElementById("recordCount");
-  if (!records.length) {
-    container.innerHTML = "<div class=\"empty-state\"><span class=\"big-icon\">🔧</span>还没有记录<br>点右下角 + 开始记账</div>";
-    count.textContent = "0 条";
+// ================= 首页 =================
+// The home screen is the owner's own private view, so profit belongs here.
+// Only the customer-facing receipt must hide cost and profit.
+function renderHome() {
+  var today = todayStr();
+  var count = 0, income = 0, profit = 0;
+  for (var i = 0; i < records.length; i++) {
+    if (records[i].date === today) {
+      count++;
+      income += records[i].totalIncome || 0;
+      profit += (records[i].totalIncome || 0) - (records[i].totalCost || 0);
+    }
+  }
+  document.getElementById("todayCount").textContent = count + " 单";
+  document.getElementById("todayIncome").textContent = "¥" + income;
+  document.getElementById("todayProfit").textContent = "¥" + profit;
+}
+
+// ================= 记账流程 =================
+function startFlow() {
+  flow = { step: "plate", plate: "", customer: "", items: [], tempInput: "" };
+  showView("guideView");
+  renderGuide();
+}
+
+function renderGuide() {
+  var q = document.getElementById("guideQuestion");
+  var hint = document.getElementById("guideHint");
+  var body = document.getElementById("guideBody");
+  var actions = document.getElementById("guideActions");
+
+  if (flow.step === "plate") {
+    q.textContent = "🚗 这辆车什么牌照?";
+    hint.textContent = "按下面的大框, 点键盘上的小话筒说话; 有车牌照片就按拍照";
+    body.innerHTML = '<div class="big-input-wrap"><input class="big-input" id="guideInput" type="text" placeholder="点这里, 说车牌" inputmode="text"></div>';
+    actions.innerHTML = '<button class="big-btn orange" onclick="capturePhoto()">📷 拍车牌</button>' +
+      '<button class="big-btn green" onclick="confirmPlate()">✅ 说好了</button>';
+    focusGuideInput();
+    speak("这辆车什么牌照? 按下面的大框, 点键盘上的小话筒, 说话。或者按右边拍照, 拍车牌。");
+  } else if (flow.step === "part") {
+    q.textContent = "🔧 进了什么配件? 多少钱?";
+    hint.textContent = "比如: 排气歧管垫片, 60, 运费12。没有进货单就说话, 有单子就拍照";
+    body.innerHTML = '<div class="big-input-wrap"><input class="big-input" id="guideInput" type="text" placeholder="点这里, 说配件和钱" inputmode="text"></div>';
+    actions.innerHTML = '<button class="big-btn orange" onclick="capturePhoto()">📷 拍进货单</button>' +
+      '<button class="big-btn green" onclick="confirmPart()">✅ 说好了</button>';
+    focusGuideInput();
+    speak("进了什么配件? 多少钱? 比如: 排气歧管垫片, 六十, 运费十二。有进货单, 就拍照。");
+  } else if (flow.step === "partConfirm") {
+    var it = flow.pendingItem;
+    q.textContent = "确认一下: " + (it.part || "配件") + ", 成本 " + it.cost + " 元" + (it.shipping > 0 ? ", 运费 " + it.shipping + " 元" : "");
+    hint.textContent = "对不对? 对就按绿的, 不对按红的重新说";
+    body.innerHTML = '<div class="part-box"><div class="pb-row"><span class="l">配件</span><span class="v">' + escHtml(it.part || "未命名") + '</span></div>' +
+      '<div class="pb-row"><span class="l">成本</span><span class="v">¥' + it.cost + '</span></div>' +
+      (it.shipping > 0 ? '<div class="pb-row"><span class="l">运费</span><span class="v">¥' + it.shipping + '</span></div>' : "") +
+      '</div>';
+    actions.innerHTML = '<button class="big-btn red" onclick="redoPart()">🔁 重新说</button>' +
+      '<button class="big-btn green" onclick="acceptPart()">✅ 对</button>';
+    speak((it.part || "配件") + ", 成本" + it.cost + "元" + (it.shipping > 0 ? ", 运费" + it.shipping + "元" : "") + "。对不对? 对按绿色, 不对按红色重新说。");
+  } else if (flow.step === "askMore") {
+    q.textContent = "还要加配件吗?";
+    hint.textContent = "还有就按绿的, 记完了按橙的算钱";
+    body.innerHTML = '<div class="part-box"><div class="pb-title">已经记下 ' + flow.items.length + ' 项</div>' +
+      flow.items.map(function(x) {
+        return '<div class="pb-row"><span class="l">' + escHtml(x.part) + '</span><span class="v">¥' + (x.cost + x.shipping) + '</span></div>';
+      }).join("") + '</div>';
+    actions.innerHTML = '<button class="big-btn green" onclick="addAnotherPart()">➕ 还有配件</button>' +
+      '<button class="big-btn orange" onclick="goToPrice()">💰 记完了, 算钱</button>';
+    speak("已经记下" + flow.items.length + "项。还要加配件, 按绿色。记完了, 按橙色算钱。");
+  } else if (flow.step === "price") {
+    var totalCost = 0;
+    for (var i = 0; i < flow.items.length; i++) totalCost += flow.items[i].cost + flow.items[i].shipping;
+    q.textContent = "💰 这单成本 " + totalCost + " 元, 收了多少钱?";
+    hint.textContent = "点大框, 说你收的数, 比如一百二";
+    body.innerHTML = '<div class="big-input-wrap"><input class="big-input" id="guideInput" type="tel" placeholder="点这里说个数, 如120" inputmode="decimal"></div>';
+    actions.innerHTML = '<button class="big-btn green" onclick="confirmPrice()">✅ 说好了</button>';
+    focusGuideInput();
+    speak("这单成本" + totalCost + "元。收了多少钱? 点大框, 说你收的数, 比如一百二。");
+  } else if (flow.step === "priceConfirm") {
+    q.textContent = "确认: 实收 " + flow.tempInput + " 元?";
+    hint.textContent = "对就按绿色";
+    body.innerHTML = '<div class="part-box"><div class="pb-row"><span class="l">实收</span><span class="v" style="font-size:32px;color:#43a047">¥' + flow.tempInput + '</span></div></div>';
+    actions.innerHTML = '<button class="big-btn red" onclick="redoPrice()">🔁 重新说</button>' +
+      '<button class="big-btn green" onclick="acceptPrice()">✅ 对</button>';
+    speak("实收" + flow.tempInput + "元, 对不对?");
+  }
+}
+
+function focusGuideInput() {
+  setTimeout(function() {
+    var el = document.getElementById("guideInput");
+    if (el) {
+      el.focus();
+      // 尝试拉起输入法
+      el.click();
+    }
+  }, 300);
+}
+
+// 拍照 (暂时提示, OCR 后续接入)
+function capturePhoto() {
+  toast("📷 拍照识别即将支持。现在请用说话: 点大框, 键盘上的小话筒");
+  speak("拍照识别马上就好。现在先用说话, 点大框, 点键盘上的小话筒。");
+  focusGuideInput();
+}
+
+// ===== 车牌 =====
+// All 31 mainland province abbreviations. The old code hardcoded 粤, which is
+// the wrong province for this shop — every plate here starts with 皖.
+var PLATE_PROVINCES = "京津冀晋蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新";
+
+function normalizePlate(raw) {
+  var s = normalizeText(raw)
+    .replace(/车牌|牌照|号码/g, "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  var m = s.match(new RegExp("[" + PLATE_PROVINCES + "]"));
+  if (m) {
+    var tail = s.slice(s.indexOf(m[0]) + 1)
+      // Only repair the tail: ASR hears O for 0 and I for 1 in the serial part.
+      .replace(/O/g, "0").replace(/I/g, "1")
+      .replace(/[^A-Z0-9]/g, "");
+    return m[0] + tail;
+  }
+  return s.replace(/[^A-Z0-9]/g, "");
+}
+
+function confirmPlate() {
+  var el = document.getElementById("guideInput");
+  var val = (el && el.value) ? el.value.trim() : "";
+  if (!val) { toast("请先说车牌"); speak("请先说车牌。"); return; }
+  flow.plate = normalizePlate(val);
+  if (!flow.plate) { toast("没听清车牌, 再说一次"); speak("没听清车牌, 再说一次。"); return; }
+  flow.step = "part";
+  // Read the digits back one at a time so he can check them by ear.
+  speak("车牌" + flow.plate.split("").join(" ") + ", 对不对? 对就接着说配件。");
+  renderGuide();
+}
+
+// ===== 配件 =====
+function confirmPart() {
+  var el = document.getElementById("guideInput");
+  var val = (el && el.value) ? el.value.trim() : "";
+  if (!val) { toast("请说配件和价格"); speak("请说配件和价格。"); return; }
+  flow.pendingItem = parsePartText(val);
+  if (!flow.pendingItem.cost && !flow.pendingItem.part) {
+    toast("没听清, 再说一次: 配件名, 价格");
+    speak("没听清, 再说一次。比如说: 排气歧管垫片, 六十。");
     return;
   }
-  var sorted = records.slice().sort(function(a,b) {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1;  // 日期降序
-    return a.id < b.id ? 1 : -1;  // 同日期, id 降序(新的在前)
-  });
-  count.textContent = sorted.length + " 条";
-  var html = "";
-  for (var i = 0; i < sorted.length; i++) {
-    var r = sorted[i];
-    var totalIncome = 0;
-    var totalCost = 0;
-    var itemCount = (r.items || []).length;
-    for (var j = 0; j < (r.items || []).length; j++) {
-      totalIncome += parseFloat(r.items[j].finalPrice) || 0;
-      totalCost += parseFloat(r.items[j].cost) || 0;
-      totalCost += parseFloat(r.items[j].shipping) || 0;
-    }
-    html += "<div class=\"record-card\" data-id=\"" + r.id + "\" onclick=\"showDetail(this.dataset.id)\" data-speak=\"日期" + r.date + ",车牌" + r.plate + ",共" + itemCount + "项,成本" + totalCost + "元,实收" + totalIncome + "元\">" +
-      "<div class=\"rc-top\"><span class=\"rc-plate\">" + escHtml(r.plate) + "</span><span class=\"rc-date\">" + r.date + "</span></div>" +
-      "<div class=\"rc-bottom\"><span class=\"rc-cost\">成本 ¥" + totalCost + " · " + itemCount + "项</span><span class=\"rc-price\">实收 ¥" + totalIncome + "</span></div></div>";
-  }
-  container.innerHTML = html;
+  flow.step = "partConfirm";
+  renderGuide();
 }
 
+// Normalize what the IME actually produces: full-width digits/letters, a space
+// inserted before amounts, a trailing full-width period, currency signs.
+function normalizeText(raw) {
+  return String(raw || "")
+    .replace(/[０-９Ａ-Ｚａ-ｚ]/g, function(c) {
+      return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+    })
+    .replace(/[，。、；！？（）]/g, " ")
+    .replace(/[¥￥$]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Spoken Chinese numbers. The father says "六十" and "一百二", never "60".
+var CN_DIGITS = { "零":0, "一":1, "二":2, "两":2, "三":3, "四":4, "五":5, "六":6, "七":7, "八":8, "九":9 };
+var CN_UNITS = { "十":10, "百":100, "千":1000, "万":10000 };
+var CN_NUM_CLASS = "[零一二两三四五六七八九十百千万]";
+
+function cnToNumber(s) {
+  if (!s) return NaN;
+  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  if (!new RegExp("^" + CN_NUM_CLASS + "+$").test(s)) return NaN;
+
+  var total = 0, section = 0, digit = 0, sawDigit = false;
+  var lastUnit = 0, sawUnit = false, sawZero = false;
+  for (var i = 0; i < s.length; i++) {
+    var ch = s.charAt(i);
+    if (CN_DIGITS[ch] !== undefined) {
+      digit = CN_DIGITS[ch];
+      sawDigit = true;
+      if (ch === "零") sawZero = true;
+    } else if (CN_UNITS[ch]) {
+      var unit = CN_UNITS[ch];
+      sawUnit = true;
+      lastUnit = unit;
+      if (unit === 10000) {
+        section = (section + digit) * unit;
+        total += section;
+        section = 0;
+      } else {
+        section += (sawDigit ? digit : 1) * unit;
+      }
+      digit = 0;
+      sawDigit = false;
+    }
+  }
+
+  // A digit left over after a unit is the spoken shorthand where the next unit
+  // down is implied: 一百二 = 120, 两千五 = 2500. But an explicit 零 marks the
+  // skipped place, so 一百零五 is 105 — scaling it up would turn it into 150.
+  if (sawDigit && digit >= 0) {
+    if (sawUnit && lastUnit >= 100 && !sawZero) {
+      total += section + digit * (lastUnit / 10);
+    } else {
+      total += section + digit;
+    }
+  } else {
+    total += section;
+  }
+  return total;
+}
+
+var NUM_TOKEN = "(\\d+(?:\\.\\d+)?|" + CN_NUM_CLASS + "+)";
+
+// Counting words. "刹车片两个一共80" — 两 is a count, 80 is the money.
+// 块 is deliberately absent: it is also the spoken word for yuan ("十五块"),
+// and reading money as a count would silently lose the cost.
+var COUNT_UNITS = "个只条根套支瓶桶升副对片张台盒包";
+
+/**
+ * Pull the part name and the money out of one spoken line.
+ *
+ * The name is kept EXACTLY as heard, even when the ASR garbles it ("漆管片"),
+ * because that string is what gets read back aloud — a garbled name he
+ * recognizes by sound is useful, a "corrected" name he never said is not.
+ * Losing the numbers, on the other hand, corrupts the ledger. Numbers first.
+ *
+ * The subtle trap is a numeral that is part of the NAME: 三元催化器, 四轮定位,
+ * 二保焊丝, 三滤. Reading that 三 as the price turns an 800 yuan part into 3
+ * yuan — wrong money, silently, which is far worse than failing to parse.
+ * So a Chinese numeral only counts as money when it stands alone as a token.
+ */
+function parsePartText(txt) {
+  var s = normalizeText(txt);
+  var shipping = 0, cost = 0;
+
+  var shipRe = new RegExp("(?:运费|邮费|快递费)\\s*[:：]?\\s*" + NUM_TOKEN);
+  var sm = s.match(shipRe);
+  if (sm) {
+    var shipVal = cnToNumber(sm[1]);
+    if (!isNaN(shipVal)) shipping = shipVal;
+    s = s.replace(sm[0], " ");
+  }
+
+  var costRe = new RegExp("(?:成本|进价|本钱|拿货|买[来的]?)\\s*[:：]?\\s*" + NUM_TOKEN);
+  var cm = s.match(costRe);
+  var rest = s;
+  if (cm) {
+    // An explicit keyword is unambiguous — trust it.
+    var costVal = cnToNumber(cm[1]);
+    if (!isNaN(costVal)) cost = costVal;
+    rest = s.replace(cm[0], " ");
+  } else {
+    var best = null;
+    // Arabic digits are always money: he types them only for amounts.
+    var digitRe = /\d+(?:\.\d+)?/g;
+    var m;
+    while ((m = digitRe.exec(s)) !== null) {
+      var dv = parseFloat(m[0]);
+      if (!isNaN(dv) && (best === null || dv > best.value)) {
+        best = { value: dv, index: m.index, length: m[0].length };
+      }
+    }
+    if (best === null) {
+      // Only Chinese numerals left. Accept one only if it is a separate token,
+      // i.e. not glued to surrounding name characters, and not a bare count
+      // like "两个". This is what keeps 三元催化器 from becoming 3 yuan.
+      var cnRe = new RegExp(CN_NUM_CLASS + "+", "g");
+      while ((m = cnRe.exec(s)) !== null) {
+        var before = m.index > 0 ? s.charAt(m.index - 1) : " ";
+        var afterIdx = m.index + m[0].length;
+        var after = afterIdx < s.length ? s.charAt(afterIdx) : " ";
+        var standalone = (before === " ") && (after === " " || "元块钱".indexOf(after) >= 0);
+        if (!standalone) continue;
+        if (COUNT_UNITS.indexOf(after) >= 0) continue;
+        var v = cnToNumber(m[0]);
+        if (isNaN(v)) continue;
+        if (best === null || v > best.value) {
+          best = { value: v, index: m.index, length: m[0].length };
+        }
+      }
+    }
+    if (best !== null) {
+      cost = best.value;
+      // Swallow a currency word that directly followed the amount, so it does
+      // not end up glued onto the name ("皮带 十五块" → "皮带块"). Anchoring on
+      // adjacency keeps names that genuinely end in 块/元 intact ("刹车块").
+      var end = best.index + best.length;
+      while (end < s.length && "元块钱".indexOf(s.charAt(end)) >= 0) end++;
+      rest = s.slice(0, best.index) + " " + s.slice(end);
+    }
+  }
+
+  // Whatever text is left is the name. Only strip the money token that was
+  // consumed above plus bookkeeping words — a numeral belonging to the name
+  // must survive, or "三元催化器" comes back as "元催化器".
+  var part = rest
+    .replace(/\d+(?:\.\d+)?/g, " ")
+    .replace(/(?:运费|邮费|快递费|成本|进价|本钱|拿货|买来|买的|元钱|块钱)/g, " ")
+    .replace(/[,\s]+/g, "")
+    .trim();
+  if (!part) part = "配件";
+
+  // Never let NaN reach storage: it serializes to null and corrupts the ledger.
+  if (isNaN(cost)) cost = 0;
+  if (isNaN(shipping)) shipping = 0;
+  return { part: part, cost: cost, shipping: shipping };
+}
+
+function redoPart() {
+  flow.step = "part";
+  renderGuide();
+}
+
+function acceptPart() {
+  flow.items.push(flow.pendingItem);
+  flow.pendingItem = null;
+  // Native confirm() is a text-only modal with tiny buttons — unusable for a
+  // user who cannot read. Ask with a full guide screen instead.
+  flow.step = "askMore";
+  renderGuide();
+}
+
+function addAnotherPart() {
+  flow.step = "part";
+  renderGuide();
+}
+
+function goToPrice() {
+  flow.step = "price";
+  renderGuide();
+}
+
+// ===== 价格 =====
+function confirmPrice() {
+  var el = document.getElementById("guideInput");
+  var val = (el && el.value) ? el.value.trim() : "";
+  var amount = NaN;
+  var norm = normalizeText(val);
+  var m = norm.match(new RegExp(NUM_TOKEN));
+  if (m) amount = cnToNumber(m[1]);
+  if (isNaN(amount)) { toast("请说个数, 比如120"); speak("请说个数, 比如一百二十。"); return; }
+  flow.tempInput = amount;
+  flow.step = "priceConfirm";
+  renderGuide();
+}
+
+function redoPrice() {
+  flow.step = "price";
+  renderGuide();
+}
+
+function acceptPrice() {
+  var totalCost = 0;
+  for (var i = 0; i < flow.items.length; i++) totalCost += flow.items[i].cost + flow.items[i].shipping;
+  var income = parseFloat(flow.tempInput);
+  if (isNaN(income)) income = totalCost;
+
+  // Spread what he charged across the items in proportion to their cost, so the
+  // per-line figures still add up to the single number he actually said.
+  // A labour-only job has zero cost, so split evenly rather than dividing by 0.
+  var items = [];
+  var assigned = 0;
+  for (var i = 0; i < flow.items.length; i++) {
+    var it = flow.items[i];
+    var lineCost = it.cost + it.shipping;
+    var share;
+    if (i === flow.items.length - 1) {
+      share = income - assigned;
+    } else if (totalCost > 0) {
+      share = Math.round(lineCost / totalCost * income * 100) / 100;
+    } else {
+      share = Math.round(income / flow.items.length * 100) / 100;
+    }
+    assigned += share;
+    items.push({
+      part: it.part,
+      cost: it.cost,
+      shipping: it.shipping,
+      totalCost: lineCost,
+      finalPrice: Math.round(share * 100) / 100
+    });
+  }
+  var record = {
+    id: Date.now().toString() + "_" + Math.random().toString(36).slice(2,6),
+    date: todayStr(),
+    plate: flow.plate,
+    customer: flow.customer || "",
+    items: items,
+    totalCost: Math.round(totalCost * 100) / 100,
+    totalIncome: income,
+    createdAt: new Date().toISOString(),
+    receiptNo: genReceiptNo()
+  };
+  records.push(record);
+  saveRecords();
+  flow.currentRecord = record;
+  renderReceipt(record);
+  // Back it up in the background. He will never remember to press a button, and
+  // this must not delay the receipt or announce anything on failure — the record
+  // is already safe in localStorage either way.
+  if (typeof syncNow === "function") {
+    try { syncNow(true); } catch (e) {}
+  }
+}
+
+/**
+ * Sequential per-day receipt number.
+ *
+ * Derived from the highest number already used today, not from the record count:
+ * counting would reissue a number after a deletion, and two jobs sharing a
+ * receipt number is the kind of thing that loses an argument with a customer.
+ */
+function genReceiptNo() {
+  var pad = function(n, l) { n = String(n); while (n.length < l) n = "0" + n; return n; };
+  var dateStr = todayStr().replace(/-/g, "");
+  var prefix = "GX" + dateStr + "-";
+  var max = 0;
+  for (var i = 0; i < records.length; i++) {
+    var no = records[i].receiptNo;
+    if (no && no.indexOf(prefix) === 0) {
+      var seq = parseInt(no.slice(prefix.length), 10);
+      if (!isNaN(seq) && seq > max) max = seq;
+    }
+  }
+  return prefix + pad(max + 1, 3);
+}
+
+// ================= 收据 =================
+/**
+ * The customer settlement sheet.
+ *
+ * PRODUCT CONTRACT: this sheet is handed to the customer, so it must never
+ * show cost, shipping, or profit — only what he is being charged. The private
+ * ledger lives on the home and history screens.
+ */
+function renderReceipt(record) {
+  var r = record;
+  var itemsHtml = "";
+  for (var i = 0; i < r.items.length; i++) {
+    var it = r.items[i];
+    itemsHtml += "<tr><td>" + (i+1) + "</td><td style=\"text-align:left\">" + escHtml(it.part) + "</td><td>1</td><td>" + fmt(it.finalPrice) + "</td></tr>";
+  }
+  document.getElementById("receiptPage").innerHTML =
+    '<div class="rp-title">维修结算单</div>' +
+    (settings.shopName ? '<div class="rp-shop">' + escHtml(settings.shopName) + '</div>' : "") +
+    '<div class="rp-meta"><span>单号: ' + (r.receiptNo || "") + '</span><span>日期: ' + r.date + '</span></div>' +
+    (settings.shopAddr || settings.shopPhone ? '<div class="rp-contact">' + escHtml(settings.shopAddr || "") + (settings.shopAddr && settings.shopPhone ? "　" : "") + escHtml(settings.shopPhone || "") + '</div>' : "") +
+    '<div class="rp-meta" style="margin-top:6px"><span>车牌: ' + escHtml(r.plate) + '</span>' + (r.customer ? '<span>客户: ' + escHtml(r.customer) + '</span>' : "") + '</div>' +
+    '<table class="rp-items"><tr><th>序号</th><th>项目名称</th><th>数量</th><th>金额(元)</th></tr>' + itemsHtml + '</table>' +
+    '<div class="rp-total"><span>应收金额</span><span class="big">¥' + fmt(r.totalIncome) + '</span></div>' +
+    '<div class="rp-total"><span>大写金额</span><span>' + toChinese(r.totalIncome) + '</span></div>' +
+    '<div class="rp-note">备注: </div>' +
+    '<div class="rp-sign"><span>经办人: ________</span><span>客户签字: ________</span></div>' +
+    '<div class="rp-foot">本单为维修记录凭证, 非正式发票 · 汽修记账助手</div>';
+  showView("receiptView");
+  // Announced while the customer may be within earshot, so this says only what
+  // is on the sheet — no cost, no profit.
+  speak("记好了。车牌" + r.plate + ", 共" + r.items.length + "项, 收" + r.totalIncome + "元。收据已经生成, 可以保存图片。");
+}
+
+function finishRecord() {
+  flow = null;
+  showView("homeView");
+  speak("记好了。还要记账, 再按开始记账。");
+}
+
+/**
+ * Render the receipt to a PNG using only built-in browser APIs.
+ *
+ * Deliberately not html2canvas from a CDN: the phone is often offline in the
+ * workshop, and jsDelivr is unreliable in China, so a runtime download meant
+ * the button simply failed when it was needed. SVG foreignObject ships nothing.
+ */
+// The receipt styles, inlined into the exported SVG. A foreignObject carries
+// the cloned DOM but NOT the page stylesheet, so without this the saved image
+// is an unstyled wall of text: no table grid, no centring, no rules. The image
+// is what the customer keeps, so it has to look like a real settlement note.
+var RECEIPT_EXPORT_CSS =
+  '*{margin:0;padding:0;box-sizing:border-box}' +
+  '.receipt-page{background:#fff;color:#000;padding:24px 20px;' +
+    'font-family:"KaiTi","STKaiti","SimSun",serif;font-size:16px;line-height:1.5}' +
+  '.rp-title{text-align:center;font-size:26px;font-weight:700;letter-spacing:4px;' +
+    'border-bottom:3px double #000;padding-bottom:8px;margin-bottom:10px}' +
+  '.rp-shop{text-align:center;font-size:18px;margin-bottom:4px}' +
+  '.rp-meta{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}' +
+  '.rp-contact{text-align:center;font-size:14px;margin-bottom:10px;' +
+    'border-bottom:1px solid #000;padding-bottom:8px}' +
+  'table.rp-items{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}' +
+  'table.rp-items th,table.rp-items td{border:1px solid #000;padding:6px 4px;text-align:center}' +
+  'table.rp-items th{background:#f0f0f0}' +
+  '.rp-total{display:flex;justify-content:space-between;font-size:17px;padding:6px 0;' +
+    'border-bottom:1px solid #000}' +
+  '.rp-total .big{font-size:22px;font-weight:700}' +
+  '.rp-note{margin-top:10px;font-size:14px;border:1px solid #000;padding:8px;min-height:40px}' +
+  '.rp-sign{display:flex;justify-content:space-between;font-size:15px;margin-top:24px}' +
+  '.rp-foot{text-align:center;font-size:12px;color:#666;margin-top:16px}';
+
+/**
+ * Draw the receipt onto a canvas and hand it back.
+ *
+ * Split out from the download so the render can be verified on its own: the
+ * saved PNG once looked nothing like the receipt while every assertion passed,
+ * because "the file encodes and has dark pixels" says nothing about styling.
+ */
+function renderReceiptCanvas() {
+  var page = document.getElementById("receiptPage");
+  var clone = page.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+
+  var width = page.offsetWidth || 360;
+  // scrollHeight of a flex child includes the space it was stretched into, which
+  // produced a tall blank tail. Measure the content itself instead.
+  var probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:-10000px;top:0;width:" + width + "px;visibility:hidden";
+  var styled = document.createElement("style");
+  styled.textContent = RECEIPT_EXPORT_CSS;
+  probe.appendChild(styled);
+  probe.appendChild(clone.cloneNode(true));
+  document.body.appendChild(probe);
+  var height = Math.ceil(probe.getBoundingClientRect().height) || 640;
+  document.body.removeChild(probe);
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+    '<foreignObject width="100%" height="100%">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml">' +
+    '<style>' + RECEIPT_EXPORT_CSS + '</style>' +
+    new XMLSerializer().serializeToString(clone) +
+    '</div></foreignObject></svg>';
+
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      try {
+        var canvas = document.createElement("canvas");
+        var scale = 2;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        resolve({ ok: true, canvas: canvas });
+      } catch (e) {
+        resolve({ ok: false, error: e.name + ": " + e.message });
+      }
+    };
+    img.onerror = function() { resolve({ ok: false, error: "image failed to load" }); };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+// Exposed for the real-browser test, which verifies the pixels.
+window.__renderReceiptCanvas = renderReceiptCanvas;
+
+function saveReceiptImage() {
+  var record = flow && flow.currentRecord ? flow.currentRecord : null;
+  var name = "收据_" + (record ? record.receiptNo : todayStr()) + ".png";
+
+  try {
+    renderReceiptCanvas().then(function(res) {
+      if (!res.ok) {
+        toast("⚠️ 保存失败, 请用手机截屏发给客户");
+        speak("保存失败, 请用手机截屏发给客户。");
+        return;
+      }
+      res.canvas.toBlob(function(blob) {
+        if (!blob) {
+          toast("⚠️ 保存失败, 请截屏代替");
+          speak("保存失败, 请用手机截屏发给客户。");
+          return;
+        }
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+        toast("✅ 收据已保存, 可以发给客户");
+        speak("收据已经保存, 可以发给客户。");
+      }, "image/png");
+    });
+  } catch (e) {
+    toast("⚠️ 保存失败, 请用手机截屏");
+    speak("保存失败, 请用手机截屏发给客户。");
+  }
+}
+
+// ================= 工具 =================
 function escHtml(s) {
   var d = document.createElement("div");
   d.textContent = s || "";
   return d.innerHTML;
 }
-
-// ============ New Record ============
-function startNewRecord() {
-  currentRecordId = null;
-  editingItems = [];
-  itemIdCounter = 0;
-  document.getElementById("recDate").value = new Date().toISOString().slice(0,10);
-  document.getElementById("recPlate").value = "";
-  document.getElementById("recCustomer").value = "";
-  document.getElementById("itemsContainer").innerHTML = "";
-  document.getElementById("itemCount").textContent = "(0 项)";
-  updateTotals();
-  showView("addView");
+function fmt(n) {
+  n = parseFloat(n) || 0;
+  return n.toFixed(2);
 }
-
-function cancelAdd() {
-  if (editingItems.length > 0 || document.getElementById("recPlate").value) {
-    if (!confirm("确定取消？未保存的数据将丢失。")) return;
+function toChinese(n) {
+  n = Math.round((parseFloat(n) || 0) * 100) / 100;
+  if (n === 0) return "零元整";
+  var digits = "零壹贰叁肆伍陆柒捌玖";
+  var units = ["", "拾", "佰", "仟"];
+  var bigUnits = ["", "万", "亿", "万亿"];
+  var intPart = Math.floor(n);
+  var decPart = Math.round((n - intPart) * 100);
+  var groups = [];
+  while (intPart > 0) {
+    groups.push(intPart % 10000);
+    intPart = Math.floor(intPart / 10000);
   }
-  showView("mainView");
-}
-
-// ============ Items ============
-function addItem(part, cost, shipping, finalPrice) {
-  var id = ++itemIdCounter;
-  editingItems.push({ id: id, part: part || "", cost: cost || 0, shipping: shipping || 0, finalPrice: finalPrice || 0 });
-  renderItems();
-}
-
-function removeItem(id) {
-  editingItems = editingItems.filter(function(i) { return i.id !== id; });
-  renderItems();
-}
-
-function updateItemField(id, field, value) {
-  var item = null;
-  for (var i = 0; i < editingItems.length; i++) {
-    if (editingItems[i].id === id) { item = editingItems[i]; break; }
-  }
-  if (!item) return;
-  item[field] = value;
-  if (field === "cost" || field === "shipping") {
-    var totalCost = (parseFloat(item.cost) || 0) + (parseFloat(item.shipping) || 0);
-    var recommended = calcRecommended(totalCost);
-    if (!item.finalPrice || item.finalPrice === 0) {
-      item.finalPrice = recommended;
-    }
-  }
-  renderItems();
-  updateTotals();
-}
-
-function calcRecommended(cost) {
-  var rate = settings.markupRate || 2;
-  var base = settings.baseFee || 0;
-  var round = settings.rounding || 1;
-  var raw = cost * rate + base;
-  if (round <= 1) return Math.round(raw);
-  return Math.ceil(raw / round) * round;
-}
-
-function updateTotals() {
-  var totalCost = 0;
-  var totalIncome = 0;
-  for (var i = 0; i < editingItems.length; i++) {
-    totalCost += parseFloat(editingItems[i].cost) || 0;
-    totalCost += parseFloat(editingItems[i].shipping) || 0;
-    totalIncome += parseFloat(editingItems[i].finalPrice) || 0;
-  }
-  var profit = totalIncome - totalCost;
-  document.getElementById("totalCostDisplay").textContent = "¥" + totalCost;
-  document.getElementById("totalIncomeDisplay").textContent = "¥" + totalIncome;
-  document.getElementById("totalProfitDisplay").textContent = "¥" + profit;
-  document.getElementById("itemCount").textContent = "(" + editingItems.length + " 项)";
-}
-
-function renderItems() {
-  var container = document.getElementById("itemsContainer");
-  var html = "";
-  for (var i = 0; i < editingItems.length; i++) {
-    var item = editingItems[i];
-    var totalCost = (parseFloat(item.cost) || 0) + (parseFloat(item.shipping) || 0);
-    var recommended = calcRecommended(totalCost);
-    var partName = escHtml(item.part);
-    html += "<div class=\"item-card\" data-speak=\"配件" + partName + ",成本" + totalCost + "元,推荐价" + recommended + "元,实收" + (item.finalPrice || 0) + "元\">" +
-      "<button class=\"del-item\" onclick=\"removeItem(" + item.id + ")\">✕</button>" +
-      "<div class=\"item-row\"><span class=\"item-label\">🔧 配件</span>" +
-        "<input type=\"text\" style=\"flex:1;background:var(--card);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 10px;border-radius:6px;font-size:16px;outline:none\" value=\"" + partName + "\" oninput=\"updateItemField(" + item.id + ",'part',this.value)\" placeholder=\"配件名称\">" +
-        "<button class=\"mic-btn\" style=\"width:40px;height:40px;font-size:18px\" onclick=\"startVoice('item_part_" + item.id + "')\">🎤</button>" +
-      "</div>" +
-      "<div class=\"item-row\"><span class=\"item-label\">💵 成本</span>" +
-        "<input type=\"number\" style=\"flex:1;background:var(--card);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 10px;border-radius:6px;font-size:16px;outline:none\" value=\"" + (item.cost || "") + "\" oninput=\"updateItemField(" + item.id + ",'cost',parseFloat(this.value)||0)\" placeholder=\"0\" inputmode=\"decimal\">" +
-      "</div>" +
-      "<div class=\"item-row\"><span class=\"item-label\">📦 运费</span>" +
-        "<input type=\"number\" style=\"flex:1;background:var(--card);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 10px;border-radius:6px;font-size:16px;outline:none\" value=\"" + (item.shipping || "") + "\" oninput=\"updateItemField(" + item.id + ",'shipping',parseFloat(this.value)||0)\" placeholder=\"0\" inputmode=\"decimal\">" +
-      "</div>" +
-      "<div class=\"item-row\"><span class=\"item-label\">📊 推荐</span><span class=\"item-val cost\">¥" + totalCost + " → <strong style=\"color:var(--accent2)\">¥" + recommended + "</strong></span></div>" +
-      "<div class=\"item-row\"><span class=\"item-label\">💰 实收</span>" +
-        "<input type=\"number\" style=\"flex:1;background:var(--card);border:2px solid var(--accent);color:#4caf50;padding:8px 10px;border-radius:6px;font-size:18px;font-weight:700;outline:none\" value=\"" + (item.finalPrice || "") + "\" oninput=\"updateItemField(" + item.id + ",'finalPrice',parseFloat(this.value)||0)\" placeholder=\"" + recommended + "\" inputmode=\"decimal\">" +
-      "</div></div>";
-  }
-  container.innerHTML = html;
-}
-
-// ============ Save ============
-function saveRecord() {
-  var date = document.getElementById("recDate").value;
-  var plate = document.getElementById("recPlate").value.trim();
-  var customer = document.getElementById("recCustomer").value.trim();
-  if (!date) { toast("请选择日期"); return; }
-  if (!plate) { toast("请输入车牌号"); return; }
-  if (editingItems.length === 0) { toast("请至少添加一个配件/项目"); return; }
-  for (var i = 0; i < editingItems.length; i++) {
-    if (!editingItems[i].part) { toast("请填写配件名称"); return; }
-  }
-  var items = [];
-  var totalCost = 0;
-  var totalIncome = 0;
-  for (var i = 0; i < editingItems.length; i++) {
-    var ei = editingItems[i];
-    var cost = parseFloat(ei.cost) || 0;
-    var shipping = parseFloat(ei.shipping) || 0;
-    var tc = cost + shipping;
-    var rp = calcRecommended(tc);
-    var fp = parseFloat(ei.finalPrice) || 0;
-    items.push({ part: ei.part, cost: cost, shipping: shipping, totalCost: tc, recommendedPrice: rp, finalPrice: fp });
-    totalCost += tc;
-    totalIncome += fp;
-  }
-  var record = {
-    id: currentRecordId || Date.now().toString() + "_" + Math.random().toString(36).slice(2,6),
-    date: date,
-    plate: plate,
-    customer: customer,
-    items: items,
-    totalCost: totalCost,
-    totalIncome: totalIncome,
-    createdAt: new Date().toISOString()
-  };
-  if (currentRecordId) {
-    for (var i = 0; i < records.length; i++) {
-      if (records[i].id === currentRecordId) { records[i] = record; break; }
-    }
-  } else {
-    records.push(record);
-  }
-  saveRecords();
-  toast("✅ 保存成功！共 " + items.length + " 项，应收 ¥" + totalIncome);
-  settingsChanged = true;
-  showView("mainView");
-}
-
-// ============ Detail ============
-function showDetail(id) {
-  var record = null;
-  for (var i = 0; i < records.length; i++) {
-    if (records[i].id === id) { record = records[i]; break; }
-  }
-  if (!record) { toast("记录不存在"); return; }
-  detailViewRecordId = id;
-  document.getElementById("detailTitle").textContent = "🚗 " + record.plate + " (" + record.date + ")";
-  var profit = record.totalIncome - record.totalCost;
-  var summaryHtml = "<div class=\"ds-row\"><span class=\"ds-label\">📅 日期</span><span class=\"ds-value\">" + record.date + "</span></div>" +
-    "<div class=\"ds-row\"><span class=\"ds-label\">🚗 车牌</span><span class=\"ds-value\">" + escHtml(record.plate) + "</span></div>";
-  if (record.customer) {
-    summaryHtml += "<div class=\"ds-row\"><span class=\"ds-label\">👤 客户</span><span class=\"ds-value\">" + escHtml(record.customer) + "</span></div>";
-  }
-  summaryHtml += "<div class=\"ds-row\"><span class=\"ds-label\">🔧 项目数</span><span class=\"ds-value\">" + (record.items || []).length + " 项</span></div>" +
-    "<div class=\"ds-row\"><span class=\"ds-label\">💰 总成本</span><span class=\"ds-value\">¥" + record.totalCost + "</span></div>" +
-    "<div class=\"ds-row\"><span class=\"ds-label\">💵 总收入</span><span class=\"ds-value green\">¥" + record.totalIncome + "</span></div>" +
-    "<div class=\"ds-row\"><span class=\"ds-label\">📈 利润</span><span class=\"ds-value " + (profit >= 0 ? "green" : "red") + "\">¥" + profit + "</span></div>";
-  document.getElementById("detailSummary").innerHTML = summaryHtml;
-
-  var itemsHtml = "";
-  for (var i = 0; i < (record.items || []).length; i++) {
-    var item = record.items[i];
-    itemsHtml += "<div class=\"detail-item\" onclick=\"speak('配件" + (i+1) + "：" + escHtml(item.part) + "，成本" + item.totalCost + "元，推荐价" + item.recommendedPrice + "元，实收" + (item.finalPrice || 0) + "元')\" data-speak=\"yes\">" +
-      "<div class=\"di-name\">" + (i+1) + ". " + escHtml(item.part) + " <button class=\"speak-btn\" onclick=\"event.stopPropagation();speak('" + escHtml(item.part) + "')\">🔊</button></div>" +
-      "<div class=\"di-details\">" +
-        "<span>成本: ¥" + item.totalCost + "</span>" +
-        "<span>推荐: ¥" + item.recommendedPrice + "</span>" +
-        "<span class=\"di-price\">实收: ¥" + (item.finalPrice || 0) + "</span>" +
-      "</div></div>";
-  }
-  document.getElementById("detailItems").innerHTML = itemsHtml;
-  showView("detailView");
-}
-
-function deleteCurrentRecord() {
-  if (!detailViewRecordId) return;
-  if (!confirm("确定删除这条记录？此操作不可恢复。")) return;
-  records = records.filter(function(r) { return r.id !== detailViewRecordId; });
-  saveRecords();
-  toast("已删除");
-  detailViewRecordId = null;
-  showView("mainView");
-}
-
-// ============ Voice Input ============
-function startVoice(targetField) {
-  voiceTargetField = targetField;
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    toast("⚠️ 您的浏览器不支持语音识别，请使用 Chrome 浏览器");
-    return;
-  }
-  voiceResultText = "";
-  document.getElementById("voResult").textContent = "...";
-  document.getElementById("voStatus").textContent = "🎤 正在聆听，请说话...";
-  document.getElementById("voMicIcon").className = "vo-mic listening";
-  document.getElementById("voiceOverlay").classList.add("active");
-  try {
-    voiceRecognition = new SR();
-    voiceRecognition.lang = "zh-CN";
-    voiceRecognition.continuous = false;
-    voiceRecognition.interimResults = true;
-    voiceRecognition.maxAlternatives = 3;
-    voiceRecognition.onresult = function(e) {
-      var finalText = "";
-      for (var i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          finalText = e.results[i][0].transcript;
-        } else {
-          document.getElementById("voResult").textContent = e.results[i][0].transcript + "...";
+  // groups[0]=个位组, groups[1]=万位组...
+  var result = "";
+  for (var i = groups.length - 1; i >= 0; i--) {
+    var g = groups[i];
+    if (g === 0) {
+      // 本组全零: 如果之前已有输出且后面还有非零组, 补一个零
+      if (result !== "") {
+        var hasLater = false;
+        for (var j = i - 1; j >= 0; j--) {
+          if (groups[j] > 0) { hasLater = true; break; }
         }
+        if (hasLater && result.charAt(result.length - 1) !== "零") result += "零";
       }
-      if (finalText) {
-        voiceResultText = finalText;
-        document.getElementById("voResult").textContent = finalText;
-        document.getElementById("voStatus").textContent = "✅ 识别完成";
-        document.getElementById("voMicIcon").className = "vo-mic";
-      }
-    };
-    voiceRecognition.onerror = function(e) {
-      var msg = e.error === "no-speech" ? "未检测到语音" : e.error;
-      document.getElementById("voStatus").textContent = "❌ 识别失败: " + msg;
-      document.getElementById("voMicIcon").className = "vo-mic";
-      setTimeout(function() { document.getElementById("voiceOverlay").classList.remove("active"); }, 2000);
-    };
-    voiceRecognition.onend = function() {
-      if (!voiceResultText) {
-        document.getElementById("voStatus").textContent = "⏳ 未识别到内容，请重试";
-        document.getElementById("voMicIcon").className = "vo-mic";
-      }
-    };
-    voiceRecognition.start();
-  } catch(e) {
-    toast("语音识别启动失败: " + e.message);
-    document.getElementById("voiceOverlay").classList.remove("active");
-  }
-}
-
-function confirmVoice() {
-  if (voiceRecognition) {
-    try { voiceRecognition.stop(); } catch(e) {}
-  }
-  document.getElementById("voiceOverlay").classList.remove("active");
-  if (!voiceTargetField || !voiceResultText) return;
-  if (voiceTargetField.indexOf("item_part_") === 0) {
-    var id = parseInt(voiceTargetField.replace("item_part_", ""), 10);
-    for (var i = 0; i < editingItems.length; i++) {
-      if (editingItems[i].id === id) { editingItems[i].part = voiceResultText; break; }
+      continue;
     }
-    renderItems();
-  } else {
-    var el = document.getElementById(voiceTargetField);
-    if (el) el.value = voiceResultText;
+    var seg = "";
+    var q = Math.floor(g / 1000);
+    var b = Math.floor((g % 1000) / 100);
+    var s = Math.floor((g % 100) / 10);
+    var ge = g % 10;
+    if (q > 0) {
+      seg += digits[q] + "仟";
+    } else if (result !== "" && (b > 0 || s > 0 || ge > 0)) {
+      seg += "零";  // 跨组补零
+    }
+    if (b > 0) {
+      seg += digits[b] + "佰";
+    } else if ((q > 0 || (result !== "" && g > 0)) && (s > 0 || ge > 0)) {
+      if (seg.charAt(seg.length - 1) !== "零") seg += "零";
+    }
+    if (s > 0) {
+      seg += digits[s] + "拾";
+    } else if ((q > 0 || b > 0 || (result !== "" && g > 0)) && ge > 0) {
+      if (seg.charAt(seg.length - 1) !== "零") seg += "零";
+    }
+    if (ge > 0) seg += digits[ge];
+    result += seg + (bigUnits[i] || "");
   }
-  toast("已录入: " + voiceResultText);
+  result += "元";
+  var jiao = Math.floor(decPart / 10), fen = decPart % 10;
+  if (jiao > 0) result += digits[jiao] + "角";
+  if (fen > 0) result += digits[fen] + "分";
+  if (jiao === 0 && fen === 0) result += "整";
+  return result;
 }
 
-function cancelVoice() {
-  if (voiceRecognition) {
-    try { voiceRecognition.stop(); } catch(e) {}
-  }
-  document.getElementById("voiceOverlay").classList.remove("active");
-}
-
-// ============ TTS ============
-function speak(text) {
-  if (!text) return;
-  if (!window.speechSynthesis) {
-    toast("⚠️ 您的浏览器不支持朗读功能");
-    return;
-  }
-  window.speechSynthesis.cancel();
-  var utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "zh-CN";
-  utter.rate = 0.9;
-  utter.pitch = 1.0;
-  var voices = window.speechSynthesis.getVoices();
-  for (var i = 0; i < voices.length; i++) {
-    if (voices[i].lang.indexOf("zh") === 0) { utter.voice = voices[i]; break; }
-  }
-  window.speechSynthesis.speak(utter);
-}
-
-// ============ Toast ============
+// ================= Toast =================
 function toast(msg) {
   var el = document.getElementById("toast");
   el.textContent = msg;
   el.classList.add("show");
   clearTimeout(el._timer);
-  el._timer = setTimeout(function() { el.classList.remove("show"); }, 2500);
+  el._timer = setTimeout(function() { el.classList.remove("show"); }, 3000);
 }
 
-// ============ Settings ============
-document.addEventListener("input", function(e) {
-  var id = e.target.id;
-  if (id.indexOf("set") === 0 && id !== "setWebdavUrl" && id !== "setWebdavUser" && id !== "setWebdavPass") {
-    saveSettings();
+/**
+ * Local calendar date as YYYY-MM-DD.
+ *
+ * Not toISOString(): that is UTC, so a job finished at 00:30 Beijing time would
+ * be filed under the previous day and quietly land in yesterday's takings.
+ */
+function todayStr(d) {
+  d = d || new Date();
+  var pad = function(n) { return (n < 10 ? "0" : "") + n; };
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
+// ================= 朗读 =================
+// Every number this user "reads" he actually hears, so speak() is load-bearing
+// rather than an accessibility extra.
+/**
+ * Speech failed. Tell him in the only channel he can still read.
+ *
+ * He cannot read 汉字, so a text toast is not a fallback for him — it is a
+ * fallback for whoever he hands the phone to. What he can perceive is the
+ * vibration and the crossed-out speaker, which is his cue that the numbers on
+ * screen were never read aloud and he needs someone to check them. Reported
+ * once per session: repeating it every save would train him to ignore it.
+ */
+var SPEAK_START_TIMEOUT = 1500;
+function reportMuteOnce(reason) {
+  var ind = document.getElementById("speakIndicator");
+  if (ind) { ind.classList.remove("on"); ind.classList.add("mute"); }
+  try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) {}
+  if (reportMuteOnce._done) return;
+  reportMuteOnce._done = true;
+  toast("🔇 手机读不出声音，数字请找人核对");
+}
+function speak(text) {
+  if (!text) return;
+  if (!window.speechSynthesis) { reportMuteOnce("no speechSynthesis"); return; }
+  try {
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(String(text));
+    utter.lang = "zh-CN";
+    utter.rate = 0.85;   // slower than default: he is listening for digits
+    utter.pitch = 1;
+    var voices = window.speechSynthesis.getVoices() || [];
+    var zh = null;
+    for (var i = 0; i < voices.length; i++) {
+      if (voices[i].lang && voices[i].lang.indexOf("zh") === 0) { zh = voices[i]; break; }
+    }
+    if (zh) {
+      utter.voice = zh;
+    } else if (voices.length) {
+      // Voices are loaded and none speak Chinese: an English engine reading
+      // Chinese produces nothing he can use, so treat it as mute. An empty
+      // list is different — Android often fills it in late, so we still try.
+      reportMuteOnce("no zh voice");
+      return;
+    }
+    var ind = document.getElementById("speakIndicator");
+    if (ind) ind.classList.add("on");
+    var clear = function() { if (ind) ind.classList.remove("on"); };
+    var started = false;
+    utter.onstart = function() { started = true; if (ind) ind.classList.remove("mute"); };
+    utter.onend = clear;
+    utter.onerror = function() { clear(); reportMuteOnce("utterance error"); };
+    window.speechSynthesis.speak(utter);
+    // Some Android engines accept the utterance and then never speak, firing
+    // neither onstart nor onerror. Without this watchdog that failure is
+    // completely invisible — the worst case for someone who cannot read.
+    setTimeout(function() {
+      if (!started) { clear(); reportMuteOnce("never started"); }
+    }, SPEAK_START_TIMEOUT);
+  } catch (e) {
+    // TTS must never break the flow, but it must not fail invisibly either.
+    reportMuteOnce("speak threw: " + e.message);
   }
-});
-
-document.addEventListener("blur", function(e) {
-  var id = e.target.id;
-  if (id.indexOf("setWebdav") === 0) saveSettings();
-}, true);
-
-// ============ Export ============
-function exportData() {
-  var data = JSON.stringify({ records: records, settings: settings, exportedAt: new Date().toISOString() }, null, 2);
-  var blob = new Blob([data], { type: "application/json" });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement("a");
-  a.href = url;
-  a.download = "garage_backup_" + new Date().toISOString().slice(0,10) + ".json";
-  a.click();
-  URL.revokeObjectURL(url);
-  toast("📤 导出成功");
 }
 
+// ================= 历史账目 =================
+function renderHistory() {
+  var container = document.getElementById("historyList");
+  if (!records.length) {
+    container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text2);font-size:20px;line-height:2">' +
+      '<span style="font-size:64px;display:block;margin-bottom:16px">📋</span>还没有账目<br>回主页按「开始记账」</div>';
+    return;
+  }
+  var sorted = records.slice().sort(function(a, b) {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (a.createdAt || "") < (b.createdAt || "") ? 1 : -1;
+  });
+  var html = "";
+  for (var i = 0; i < sorted.length; i++) {
+    var r = sorted[i];
+    var profit = (r.totalIncome || 0) - (r.totalCost || 0);
+    html += '<div class="hist-card" onclick="speakRecord(\'' + r.id + '\')">' +
+      '<div class="hc-top"><span class="hc-plate">' + escHtml(r.plate) + '</span><span>¥' + (r.totalIncome || 0) + '</span></div>' +
+      '<div class="hc-sum"><span>' + r.date + ' · ' + (r.items || []).length + ' 项</span>' +
+      '<span>成本 ¥' + (r.totalCost || 0) + ' · 赚 ¥' + profit + '</span></div></div>';
+  }
+  container.innerHTML = html;
+}
+
+// Tapping a history row reads it aloud — the only way he can review the ledger.
+function speakRecord(id) {
+  var r = null;
+  for (var i = 0; i < records.length; i++) if (records[i].id === id) { r = records[i]; break; }
+  if (!r) return;
+  var parts = (r.items || []).map(function(it) { return it.part; }).join(", ");
+  var profit = (r.totalIncome || 0) - (r.totalCost || 0);
+  speak(r.date + ", 车牌" + r.plate + ", " + parts + ", 成本" + (r.totalCost || 0) +
+        "元, 收了" + (r.totalIncome || 0) + "元, 赚" + profit + "元。");
+}
+
+// ================= 数据导出 / 清空 =================
+/**
+ * Settings minus the secrets, for anything that leaves the phone.
+ *
+ * A backup lands in Downloads and on the WebDAV server, so it must carry the
+ * ledger and his preferences but never the credentials that reach them —
+ * otherwise a copied backup file is itself a working key. The restore path
+ * already refuses to import credentials, so both directions now agree.
+ */
+var SECRET_SETTINGS = ["webdavPass", "syncToken"];
+function publicSettings() {
+  var out = {};
+  for (var k in settings) {
+    if (!Object.prototype.hasOwnProperty.call(settings, k)) continue;
+    if (SECRET_SETTINGS.indexOf(k) >= 0) continue;
+    out[k] = settings[k];
+  }
+  return out;
+}
+function backupPayload() {
+  return { records: records, settings: publicSettings(), exportedAt: new Date().toISOString() };
+}
+function exportData() {
+  try {
+    var payload = JSON.stringify(backupPayload(), null, 2);
+    var blob = new Blob([payload], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "garage_backup_" + todayStr() + ".json";
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+    toast("📤 已导出 " + records.length + " 条");
+    speak("已经导出" + records.length + "条账目。");
+  } catch (e) {
+    toast("导出失败: " + e.message);
+    speak("导出失败了。");
+  }
+}
+
+// Destructive, and he cannot read a warning dialog — so it is spoken, and it
+// requires a second deliberate press within a few seconds.
+var clearArmed = 0;
 function clearAllData() {
-  if (!confirm("⚠️ 确定要清空所有数据吗？此操作不可恢复！\n建议先点「导出数据」备份。")) return;
-  if (!confirm("再次确认：删除所有记账记录和设置？")) return;
+  var now = Date.now();
+  if (now - clearArmed > 6000) {
+    clearArmed = now;
+    toast("⚠️ 真的要全部删掉? 再按一次确认");
+    speak("注意, 这会删掉全部账目, 删了找不回来。真的要删, 就再按一次。不删就别动。");
+    return;
+  }
+  clearArmed = 0;
   records = [];
   saveRecords();
-  toast("🗑️ 已清空所有数据");
-  showView("mainView");
+  toast("🗑️ 已清空");
+  speak("全部账目已经删掉了。");
+  showView("homeView");
 }
 
-// ============ WebDAV ============
+// ================= WebDAV 备份 =================
+function webdavConfig() {
+  var url = (settings.webdavUrl || "").trim();
+  var user = (settings.webdavUser || "").trim();
+  var pass = settings.webdavPass || "";
+  if (!url) { toast("⚠️ 请先填 WebDAV 地址"); speak("还没设置备份地址。"); return null; }
+  if (!user || !pass) { toast("⚠️ 请填用户名和密码"); speak("还没设置备份的用户名和密码。"); return null; }
+  if (url.charAt(url.length - 1) !== "/") url += "/";
+  return { url: url, auth: "Basic " + btoa(unescape(encodeURIComponent(user + ":" + pass))) };
+}
+
 function backupToWebdav() {
-  var url = document.getElementById("setWebdavUrl").value.trim();
-  var user = document.getElementById("setWebdavUser").value.trim();
-  var pass = document.getElementById("setWebdavPass").value.trim();
-  if (!url) { toast("⚠️ 请先填写 WebDAV 地址"); return; }
-  if (!user || !pass) { toast("⚠️ 请填写 WebDAV 用户名和密码"); return; }
-  saveSettings();
+  var cfg = webdavConfig();
+  if (!cfg) return;
+  var filename = "garage_backup_" + todayStr() + ".json";
   toast("☁️ 正在备份...");
-  var data = JSON.stringify({ records: records, settings: settings, exportedAt: new Date().toISOString() }, null, 2);
-  var filename = "garage_backup_" + new Date().toISOString().slice(0,10) + ".json";
-  var auth = btoa(user + ":" + pass);
-  fetch(url + filename, {
+  speak("正在备份。");
+  fetch(cfg.url + filename, {
     method: "PUT",
-    headers: {
-      "Authorization": "Basic " + auth,
-      "Content-Type": "application/json"
-    },
-    body: data
+    headers: { "Authorization": cfg.auth, "Content-Type": "application/json" },
+    body: JSON.stringify(backupPayload())
   }).then(function(res) {
     if (res.ok || res.status === 201 || res.status === 204) {
-      toast("✅ 备份成功！文件: " + filename);
-      settingsChanged = false;
+      toast("✅ 备份成功 (" + records.length + " 条)");
+      speak("备份成功, 一共" + records.length + "条账目。");
     } else {
       toast("❌ 备份失败: HTTP " + res.status);
+      speak("备份失败了, 检查一下网络。");
     }
   }).catch(function(err) {
     toast("❌ 备份失败: " + err.message);
+    speak("备份失败了, 检查一下网络。");
   });
 }
 
 function restoreFromWebdav() {
-  var url = document.getElementById("setWebdavUrl").value.trim();
-  var user = document.getElementById("setWebdavUser").value.trim();
-  var pass = document.getElementById("setWebdavPass").value.trim();
-  if (!url) { toast("⚠️ 请先填写 WebDAV 地址"); return; }
-  toast("📥 正在从数据胶囊恢复...");
-  var auth = btoa(user + ":" + pass);
-  fetch(url, {
-    method: "PROPFIND",
-    headers: {
-      "Authorization": "Basic " + auth,
-      "Depth": "1"
-    }
-  }).then(function(res) {
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return res.text();
-  }).then(function(xml) {
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(xml, "text/xml");
-    var hrefs = doc.querySelectorAll("D\\:href, d\\:href");
-    var files = [];
-    hrefs.forEach(function(h) {
-      var name = h.textContent;
-      if (name && name.indexOf("garage_backup") >= 0 && name.indexOf(".json") >= 0) {
-        files.push(name);
+  var cfg = webdavConfig();
+  if (!cfg) return;
+  toast("📥 正在找备份...");
+  speak("正在找备份。");
+  fetch(cfg.url, { method: "PROPFIND", headers: { "Authorization": cfg.auth, "Depth": "1" } })
+    .then(function(res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.text();
+    })
+    .then(function(xml) {
+      var doc = new DOMParser().parseFromString(xml, "text/xml");
+      // Namespace prefixes vary between WebDAV servers, so match on local name.
+      var nodes = doc.getElementsByTagName("*");
+      var files = [];
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        var local = n.localName || n.nodeName.replace(/^.*:/, "");
+        if (local.toLowerCase() !== "href") continue;
+        var t = (n.textContent || "").trim();
+        if (t.indexOf("garage_backup") >= 0 && t.indexOf(".json") >= 0) {
+          files.push(t.slice(t.lastIndexOf("/") + 1));
+        }
       }
-    });
-    if (files.length === 0) {
-      throw new Error("未找到备份文件");
-    }
-    files.sort().reverse();
-    var latestFile = files[0];
-    return fetch(url + latestFile, {
-      headers: { "Authorization": "Basic " + auth }
-    }).then(function(r) {
+      if (!files.length) throw new Error("没找到备份文件");
+      files.sort().reverse();
+      return fetch(cfg.url + files[0], { headers: { "Authorization": cfg.auth } });
+    })
+    .then(function(r) {
       if (!r.ok) throw new Error("读取失败");
       return r.json();
-    }).then(function(data) {
-      if (data.records && Array.isArray(data.records)) {
-        records = data.records;
-        if (data.settings) settings = data.settings;
-        saveRecords();
-        saveSettings();
-        toast("✅ 恢复成功！共 " + records.length + " 条记录");
-        showView("mainView");
-      } else {
-        throw new Error("备份文件格式错误");
+    })
+    .then(function(data) {
+      if (!data || !Array.isArray(data.records)) throw new Error("备份文件格式不对");
+      records = data.records;
+      if (data.settings) {
+        // Keep this device's own WebDAV credentials rather than importing them.
+        var keep = { webdavUrl: settings.webdavUrl, webdavUser: settings.webdavUser, webdavPass: settings.webdavPass };
+        settings = data.settings;
+        settings.webdavUrl = keep.webdavUrl;
+        settings.webdavUser = keep.webdavUser;
+        settings.webdavPass = keep.webdavPass;
+        try { localStorage.setItem("garage_settings", JSON.stringify(settings)); } catch (e) {}
+        syncSettingsForm();
       }
+      saveRecords();
+      toast("✅ 恢复成功 (" + records.length + " 条)");
+      speak("恢复成功, 一共" + records.length + "条账目。");
+      showView("homeView");
+    })
+    .catch(function(err) {
+      toast("❌ 恢复失败: " + err.message);
+      speak("恢复失败了。");
     });
-  }).catch(function(err) {
-    toast("❌ 恢复失败: " + err.message);
-  });
 }
 
-// ============ Keyboard ============
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape") {
-    var overlay = document.getElementById("voiceOverlay");
-    if (overlay.classList.contains("active")) cancelVoice();
+// ================= 云端同步 =================
+/**
+ * Sync to the Cloudflare Worker.
+ *
+ * Local storage stays the source of truth. The phone is offline for most of the
+ * working day, so sync is strictly a backup path: it must never block a record,
+ * never lose one, and never throw where he would see a broken screen. Failure
+ * is spoken, then ignored.
+ *
+ * The two sides disagree on representation, so the mapping is explicit:
+ *   money   yuan float  <->  integer fen   (never round-trip money as a float)
+ *   time    ISO string  <->  epoch ms
+ *   date    local day     kept verbatim, not derived from a timestamp
+ */
+function getDeviceId() {
+  var id = null;
+  try { id = localStorage.getItem("garage_device_id"); } catch (e) {}
+  if (!id) {
+    id = "dev_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem("garage_device_id", id); } catch (e) {}
   }
-});
+  return id;
+}
 
-// ============ Preload voices ============
-if (window.speechSynthesis) {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = function() {
-    window.speechSynthesis.getVoices();
+// Money crosses the wire as integer fen. 12.6 * 100 is 1259.9999... in binary
+// floating point, so round rather than truncate.
+function toFen(yuan) {
+  var n = parseFloat(yuan);
+  if (isNaN(n)) return 0;
+  return Math.round(n * 100);
+}
+
+function fromFen(fen) {
+  var n = parseInt(fen, 10);
+  if (isNaN(n)) return 0;
+  return Math.round(n) / 100;
+}
+
+function recordToJob(r) {
+  var created = Date.parse(r.createdAt || "") || Date.now();
+  var items = (r.items || []).map(function(it, i) {
+    return {
+      id: r.id + "_i" + i,
+      spoken_name: it.part || "配件",   // verbatim; never rewritten
+      qty: 1,
+      cost: toFen(it.cost),
+      shipping: toFen(it.shipping),
+      charge: toFen(it.finalPrice),
+      seq: i
+    };
+  });
+  return {
+    id: r.id,
+    device_id: getDeviceId(),
+    plate: r.plate || null,
+    customer_id: null,           // free-text customer is not a schema FK yet
+    note: r.customer || null,
+    total_cost: toFen(r.totalCost),
+    total_charge: toFen(r.totalIncome),
+    settled: 1,
+    receipt_no: r.receiptNo || null,
+    local_date: r.date || null,
+    created_at: created,
+    updated_at: r.updatedAt || created,
+    deleted_at: null,
+    items: items
   };
 }
 
-// ============ Start ============
+function jobToRecord(job, allItems) {
+  var mine = (allItems || []).filter(function(it) {
+    return String(it.job_id || job.id) === String(job.id);
+  }).sort(function(a, b) { return (a.seq || 0) - (b.seq || 0); });
+
+  var items = mine.map(function(it) {
+    var cost = fromFen(it.cost);
+    var shipping = fromFen(it.shipping);
+    return {
+      part: it.spoken_name || "配件",
+      cost: cost,
+      shipping: shipping,
+      totalCost: Math.round((cost + shipping) * 100) / 100,
+      finalPrice: fromFen(it.charge)
+    };
+  });
+  return {
+    id: job.id,
+    date: job.local_date || todayStr(new Date(job.created_at || Date.now())),
+    plate: job.plate || "",
+    customer: job.note || "",
+    items: items,
+    totalCost: fromFen(job.total_cost),
+    totalIncome: fromFen(job.total_charge),
+    createdAt: new Date(job.created_at || Date.now()).toISOString(),
+    updatedAt: job.updated_at || job.created_at || Date.now(),
+    receiptNo: job.receipt_no || ""
+  };
+}
+
+/** Last-write-wins on updated_at, mirroring the Worker's own guard. */
+function mergeRemote(jobs, items) {
+  var changed = false;
+  (jobs || []).forEach(function(job) {
+    if (!job || !job.id) return;
+    var idx = -1;
+    for (var i = 0; i < records.length; i++) {
+      if (records[i].id === job.id) { idx = i; break; }
+    }
+    var remoteAt = job.updated_at || job.created_at || 0;
+
+    if (job.deleted_at) {
+      // Deleted on another device.
+      if (idx >= 0) { records.splice(idx, 1); changed = true; }
+      return;
+    }
+    var incoming = jobToRecord(job, items);
+    if (idx < 0) {
+      records.push(incoming);
+      changed = true;
+    } else {
+      var localAt = records[idx].updatedAt || Date.parse(records[idx].createdAt || "") || 0;
+      if (remoteAt > localAt) { records[idx] = incoming; changed = true; }
+    }
+  });
+  if (changed) saveRecords();
+  return changed;
+}
+
+function syncConfig() {
+  var url = (settings.syncUrl || "").trim().replace(/\/+$/, "");
+  var token = (settings.syncToken || "").trim();
+  if (!url || !token) return null;
+  return { url: url, token: token };
+}
+
+/**
+ * Push local jobs, then pull anything newer. Safe to call at any time.
+ * Resolves even on failure — the caller must never need a try/catch.
+ */
+function syncNow(quiet) {
+  var cfg = syncConfig();
+  if (!cfg) return Promise.resolve({ ok: false, reason: "not configured" });
+
+  // Queue behind any sync already in flight rather than dropping this one. The
+  // auto-sync fires the moment a job is saved, so a tap on 立即同步 lands right
+  // on top of it — dropping that request would silently leave his newest job
+  // unsent, which is the exact failure this feature exists to prevent.
+  var prev = syncNow._chain || Promise.resolve();
+  var run = prev.then(function() { return syncOnce(cfg, quiet); },
+                      function() { return syncOnce(cfg, quiet); });
+  syncNow._chain = run.then(function() {}, function() {});
+  return run;
+}
+
+function syncOnce(cfg, quiet) {
+  if (!quiet) { toast("☁️ 正在同步..."); speak("正在同步。"); }
+
+  var headers = { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.token };
+  var jobs = records.map(recordToJob);
+  var since = 0;
+  try { since = parseInt(localStorage.getItem("garage_sync_since") || "0", 10) || 0; } catch (e) {}
+
+  return fetch(cfg.url + "/sync", {
+    method: "POST", headers: headers, body: JSON.stringify({ jobs: jobs })
+  }).then(function(res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return fetch(cfg.url + "/sync?device=" + encodeURIComponent(getDeviceId()) + "&since=" + since, {
+      headers: headers
+    });
+  }).then(function(res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }).then(function(data) {
+    var pulled = mergeRemote(data.jobs || [], data.items || []);
+    if (data.ts) {
+      try { localStorage.setItem("garage_sync_since", String(data.ts)); } catch (e) {}
+    }
+    if (!quiet) {
+      toast("✅ 同步好了 (" + records.length + " 条)");
+      speak("同步好了, 一共" + records.length + "条账目。");
+    }
+    renderHome();
+    return { ok: true, pulled: pulled };
+  }).catch(function(err) {
+    // Offline is the normal case in the workshop, not an error state.
+    if (!quiet) {
+      toast("⚠️ 同步失败, 账目还在手机里");
+      speak("同步失败了, 不要紧, 账目还在手机里, 有网了再同步。");
+    }
+    return { ok: false, reason: err.message };
+  });
+}
+
+// Exposed for tests, which drive these directly.
+window.getDeviceId = getDeviceId;
+window.toFen = toFen;
+window.fromFen = fromFen;
+window.recordToJob = recordToJob;
+window.jobToRecord = jobToRecord;
+window.mergeRemote = mergeRemote;
+window.syncNow = syncNow;
+
+// ================= 启动 =================
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = function() { window.speechSynthesis.getVoices(); };
+}
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.register("sw.js").catch(function() {});
+  });
+}
 init();
 </script>
 </body>

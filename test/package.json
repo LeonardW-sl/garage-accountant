@@ -1,0 +1,9 @@
+{
+  "name": "garage-pwa-test",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "chrome-remote-interface": "^0.34.0",
+    "jsdom": "^29.1.1"
+  }
+}

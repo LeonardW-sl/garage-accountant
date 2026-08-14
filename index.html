@@ -38,6 +38,7 @@ header button{background:none;border:none;color:#fff;font-size:24px;padding:8px;
 .big-btn.green{background:var(--green2)}
 .big-btn.red{background:var(--red)}
 .big-btn.orange{background:var(--accent)}
+.big-btn.blue{background:#1565c0}
 .big-btn:active{opacity:.8}
 .btn-row{display:flex;gap:12px;width:100%}
 .btn-row .big-btn{flex:1}
@@ -56,6 +57,8 @@ header button{background:none;border:none;color:#fff;font-size:24px;padding:8px;
 table.rp-items{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
 table.rp-items th,table.rp-items td{border:1px solid #000;padding:6px 4px;text-align:center}
 table.rp-items th{background:#f0f0f0}
+.reviewable-row{cursor:pointer;transition:background 0.15s}
+.reviewable-row:active{background:#e3f2fd}
 .rp-total{display:flex;justify-content:space-between;font-size:17px;padding:6px 0;border-bottom:1px solid #000}
 .rp-total .big{font-size:22px;font-weight:700}
 .rp-note{margin-top:10px;font-size:14px;border:1px solid #000;padding:8px;min-height:40px}
@@ -133,6 +136,7 @@ table.rp-items th{background:#f0f0f0}
 <div id="receiptView" class="view">
   <div class="receipt-page" id="receiptPage"></div>
   <div class="receipt-actions">
+    <button class="big-btn blue" onclick="speakReceiptSummary()">🔊 总结</button>
     <button class="big-btn orange" onclick="saveReceiptImage()">📷 保存图片</button>
     <button class="big-btn green" onclick="finishRecord()">✅ 完成</button>
   </div>
@@ -180,6 +184,10 @@ table.rp-items th{background:#f0f0f0}
 var records = [];
 var settings = {};
 var flow = null; // { step, plate, customer, items: [{part,cost,shipping,finalPrice}], pendingItem, tempInput }
+// Whichever record the receipt view is currently showing. Set by renderReceipt
+// so the receipt actions work the same whether he arrived from a fresh job or
+// by tapping a history row — flow is null in the latter case.
+var shownRecord = null;
 var voiceSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
 // ================= 初始化 =================
@@ -402,6 +410,9 @@ function confirmPart() {
     speak("没听清, 再说一次。比如说: 排气歧管垫片, 六十。");
     return;
   }
+  // Echo the part name immediately so the owner knows it was heard, before
+  // the full confirmation screen with cost and shipping. Quick feedback loop.
+  speak(flow.pendingItem.part);
   flow.step = "partConfirm";
   renderGuide();
 }
@@ -693,11 +704,14 @@ function genReceiptNo() {
  * ledger lives on the home and history screens.
  */
 function renderReceipt(record) {
+  shownRecord = record;
   var r = record;
   var itemsHtml = "";
   for (var i = 0; i < r.items.length; i++) {
     var it = r.items[i];
-    itemsHtml += "<tr><td>" + (i+1) + "</td><td style=\"text-align:left\">" + escHtml(it.part) + "</td><td>1</td><td>" + fmt(it.finalPrice) + "</td></tr>";
+    // Each row is tappable for owner review: tap to hear cost and profit.
+    // data-idx lets the click handler find the full item with cost/shipping.
+    itemsHtml += "<tr class=\"reviewable-row\" data-idx=\"" + i + "\"><td>" + (i+1) + "</td><td style=\"text-align:left\">" + escHtml(it.part) + "</td><td>1</td><td>" + fmt(it.finalPrice) + "</td></tr>";
   }
   document.getElementById("receiptPage").innerHTML =
     '<div class="rp-title">维修结算单</div>' +
@@ -711,16 +725,45 @@ function renderReceipt(record) {
     '<div class="rp-note">备注: </div>' +
     '<div class="rp-sign"><span>经办人: ________</span><span>客户签字: ________</span></div>' +
     '<div class="rp-foot">本单为维修记录凭证, 非正式发票 · 汽修记账助手</div>';
+
+  // Wire up tap-to-review: owner taps a line to hear its cost and profit before
+  // handing the receipt to the customer. Forces line-by-line attention rather
+  // than letting a single "speak all" button let mistakes slip past.
+  var rows = document.querySelectorAll(".reviewable-row");
+  for (var j = 0; j < rows.length; j++) {
+    rows[j].addEventListener("click", function() {
+      var idx = parseInt(this.getAttribute("data-idx"), 10);
+      var it = r.items[idx];
+      var profit = it.finalPrice - it.totalCost;
+      speak(it.part + ", 成本" + it.totalCost + "元, 收了" + it.finalPrice + "元, 赚" + profit + "元。");
+    });
+  }
+
   showView("receiptView");
   // Announced while the customer may be within earshot, so this says only what
   // is on the sheet — no cost, no profit.
   speak("记好了。车牌" + r.plate + ", 共" + r.items.length + "项, 收" + r.totalIncome + "元。收据已经生成, 可以保存图片。");
 }
 
+function speakReceiptSummary() {
+  // Owner wants a final audit before handing the receipt over: total cost,
+  // total income, and profit. This is the aggregate check after reviewing
+  // individual lines; does not replace line-by-line review because mistakes
+  // hide in the details, not the sum.
+  if (!shownRecord) return;
+  var r = shownRecord;
+  var profit = r.totalIncome - r.totalCost;
+  speak("总成本" + r.totalCost + "元, 收了" + r.totalIncome + "元, 赚" + profit + "元。");
+}
+
 function finishRecord() {
+  var isNewRecord = !!flow;
   flow = null;
+  shownRecord = null;
   showView("homeView");
-  speak("记好了。还要记账, 再按开始记账。");
+  if (isNewRecord) {
+    speak("记好了。还要记账, 再按开始记账。");
+  }
 }
 
 /**
@@ -812,7 +855,7 @@ function renderReceiptCanvas() {
 window.__renderReceiptCanvas = renderReceiptCanvas;
 
 function saveReceiptImage() {
-  var record = flow && flow.currentRecord ? flow.currentRecord : null;
+  var record = shownRecord;
   var name = "收据_" + (record ? record.receiptNo : todayStr()) + ".png";
 
   try {
@@ -1022,15 +1065,14 @@ function renderHistory() {
   container.innerHTML = html;
 }
 
-// Tapping a history row reads it aloud — the only way he can review the ledger.
+// Tapping a history row opens that receipt so owner can review line-by-line
+// and hear the summary — the only way he can audit the ledger.
 function speakRecord(id) {
   var r = null;
   for (var i = 0; i < records.length; i++) if (records[i].id === id) { r = records[i]; break; }
   if (!r) return;
-  var parts = (r.items || []).map(function(it) { return it.part; }).join(", ");
-  var profit = (r.totalIncome || 0) - (r.totalCost || 0);
-  speak(r.date + ", 车牌" + r.plate + ", " + parts + ", 成本" + (r.totalCost || 0) +
-        "元, 收了" + (r.totalIncome || 0) + "元, 赚" + profit + "元。");
+  renderReceipt(r);
+  showView("receiptView");
 }
 
 // ================= 数据导出 / 清空 =================

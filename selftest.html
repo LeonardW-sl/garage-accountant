@@ -250,12 +250,26 @@ async function runChecks() {
   }
 
   // 2 — Chinese TTS engine presence. This is the app's main road.
+  // Android Chrome loads voices asynchronously via the 'voiceschanged' event;
+  // calling getVoices() immediately after page load often returns an empty array.
+  // The app itself triggers this at startup (line 1389-1391), so by the time the
+  // user taps any button the voices are there. The selftest has to wait too.
   try {
     var voices = [];
-    for (var k = 0; k < 8; k++) {
-      voices = (w.speechSynthesis && w.speechSynthesis.getVoices()) || [];
-      if (voices.length) break;
-      await wait(300);
+    var sy = w.speechSynthesis;
+    if (sy) {
+      sy.getVoices();  // kick off loading
+      var loaded = new Promise(function(resolve) {
+        var check = function() {
+          voices = sy.getVoices() || [];
+          if (voices.length) resolve();
+        };
+        sy.onvoiceschanged = check;
+        check();  // might already be loaded
+      });
+      var timeout = new Promise(function(resolve) { setTimeout(resolve, 4000); });
+      await Promise.race([loaded, timeout]);
+      voices = sy.getVoices() || [];
     }
     var zh = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf("zh") === 0; });
     var names = zh.map(function(v) { return v.name + "(" + v.lang + ")"; }).join(", ");
@@ -409,6 +423,9 @@ function speakTest() {
     sy.cancel();
     var u = new (w.SpeechSynthesisUtterance || window.SpeechSynthesisUtterance)(line);
     u.lang = "zh-CN"; u.rate = 0.85;
+    // Voices might still be loading; getVoices() right now could be empty.
+    // The automated check waits for voiceschanged; this manual button doesn't
+    // need to — if voices aren't ready yet, the engine will use a default.
     var vs = sy.getVoices() || [];
     for (var i = 0; i < vs.length; i++) {
       if (vs[i].lang && vs[i].lang.toLowerCase().indexOf("zh") === 0) { u.voice = vs[i]; break; }
